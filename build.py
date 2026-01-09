@@ -149,6 +149,23 @@ def main():
                 print(f"已删除临时文件: {spec_file}")
             except Exception as e:
                 print(f"删除 {spec_file} 失败: {e}")
+        
+        # 步骤6: 压缩构建结果
+        print("\n正在压缩构建结果...")
+        dist_dir = 'dist/SnapSum4J'
+        zip_output = 'SnapSum4J.zip'
+        
+        try:
+            import shutil
+            # 确保删除旧的zip文件
+            if os.path.exists(zip_output):
+                os.remove(zip_output)
+            # 压缩目录
+            shutil.make_archive('SnapSum4J', 'zip', dist_dir)
+            print(f"✅ 压缩成功！压缩文件位置: {zip_output}")
+        except Exception as e:
+            print(f"❌ 压缩失败: {e}")
+        
         print("\n🎉 构建过程完成！")
         return 0
     else:
