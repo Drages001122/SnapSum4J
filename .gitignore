@@ -28,3 +28,6 @@ pytest_cache/
 # Logs
 logs/
 *.log
+
+# Images
+images/
