@@ -2,14 +2,31 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter.scrolledtext import ScrolledText
 import os
+import sys
 import time
 from paddleocr import PaddleOCR
+
+# 解决打包后路径问题的核心函数：获取资源真实路径
+def get_resource_path(relative_path):
+    """
+    兼容开发环境（源码运行）和打包后环境（exe运行）的路径获取
+    """
+    if hasattr(sys, '_MEIPASS'):
+        # 打包后，临时解压目录（单文件模式）
+        base_path = sys._MEIPASS
+    else:
+        # 开发环境，项目根目录
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 # 初始化 PaddleOCR 实例
 ocr = PaddleOCR(
     use_doc_orientation_classify=False,
     use_doc_unwarping=False,
-    use_textline_orientation=False)
+    use_textline_orientation=False,
+    text_detection_model_dir=get_resource_path("models/PP-OCRv5_server_det"),
+    text_recognition_model_dir=get_resource_path("models/PP-OCRv5_server_rec")
+)
 
 # 复用现有的数字识别功能
 def recognize_image(image_path):
