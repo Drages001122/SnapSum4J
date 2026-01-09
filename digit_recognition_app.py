@@ -1,25 +1,41 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter.scrolledtext import ScrolledText
-import easyocr
-import re
 import os
+from paddleocr import PaddleOCR
+
+# 初始化 PaddleOCR 实例
+ocr = PaddleOCR(
+    use_doc_orientation_classify=False,
+    use_doc_unwarping=False,
+    use_textline_orientation=False)
 
 # 复用现有的数字识别功能
 def recognize_image(image_path):
     """识别图片中的数字并计算总和"""
     try:
-        # 初始化EasyOCR（使用英文模型，足够识别数字）
-        reader = easyocr.Reader(lang_list=["en"], gpu=False)
         # 识别图片
-        result = reader.readtext(image_path)
-        # 提取数字（支持小数）
+        result = ocr.predict(input=image_path)
+        # 提取数字
         all_numbers = []
-        for detection in result:
-            text = detection[1]
-            numbers = re.findall(r'\d+(?:\.\d+)?', text)
-            if numbers:
-                all_numbers.extend(numbers)
+        if result:
+            rec_texts = []
+            # 遍历result中的每个OCRResult对象
+            for res in result:
+                try:
+                    # 检查res对象是否有rec_texts属性
+                    if hasattr(res, 'rec_texts'):
+                        rec_texts.extend(res.rec_texts)
+                    # 或者检查是否可以通过字典方式访问
+                    elif isinstance(res, dict) and 'rec_texts' in res:
+                        rec_texts.extend(res['rec_texts'])
+                except Exception as e:
+                    print(f"Error accessing rec_texts: {e}")
+            
+            # 过滤出数字（支持小数）
+            for text in rec_texts:
+                if text.replace('.', '', 1).isdigit():
+                    all_numbers.append(text)
         # 计算总和
         total_sum = sum(float(num) for num in all_numbers)
         
