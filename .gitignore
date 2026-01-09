@@ -13,6 +13,7 @@ dist/
 *.spec
 build.py
 
+
 # IDE
 .idea/
 .vscode/
