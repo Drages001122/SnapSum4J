@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter.scrolledtext import ScrolledText
 import os
+import time
 from paddleocr import PaddleOCR
 
 # 初始化 PaddleOCR 实例
@@ -70,9 +71,6 @@ class DigitRecognitionApp:
         upload_button = tk.Button(upload_frame, text="选择图片", command=self.upload_image)
         upload_button.pack(side=tk.LEFT, padx=5)
         
-        recognize_button = tk.Button(upload_frame, text="识别数字", command=self.recognize_digits)
-        recognize_button.pack(side=tk.LEFT, padx=5)
-        
         # 数字显示区域
         text_frame = tk.Frame(main_frame)
         text_frame.pack(fill=tk.BOTH, expand=True, pady=10)
@@ -82,13 +80,12 @@ class DigitRecognitionApp:
         
         self.digits_text = ScrolledText(text_frame, height=10, width=60, font=("Courier New", 12))
         self.digits_text.pack(fill=tk.BOTH, expand=True, padx=5)
+        # 绑定文本修改事件，实现自动更新总和
+        self.digits_text.bind("<KeyRelease>", self.on_digits_modified)
         
         # 求和区域
         sum_frame = tk.Frame(main_frame)
         sum_frame.pack(fill=tk.X, pady=10)
-        
-        sum_button = tk.Button(sum_frame, text="计算总和", command=self.calculate_sum, font=("微软雅黑", 10, "bold"))
-        sum_button.pack(side=tk.LEFT, padx=5)
         
         sum_label = tk.Label(sum_frame, text="总和:", font=("微软雅黑", 10, "bold"))
         sum_label.pack(side=tk.LEFT, padx=5, pady=5)
@@ -110,6 +107,8 @@ class DigitRecognitionApp:
         if file_path:
             self.image_path_var.set(file_path)
             self.status_var.set(f"已选择图片: {os.path.basename(file_path)}")
+            # 自动识别图片
+            self.recognize_digits()
     
     def recognize_digits(self):
         """识别图片中的数字"""
@@ -122,11 +121,19 @@ class DigitRecognitionApp:
             messagebox.showerror("错误", "选择的图片文件不存在")
             return
         
+        # 识别过程中用红字显示正在识别
+        self.status_label.config(fg="red")
         self.status_var.set("正在识别数字...")
         self.root.update()
         
         try:
+            # 记录开始时间
+            start_time = time.time()
+            
             numbers, total = recognize_image(image_path)
+            
+            # 计算识别耗时
+            elapsed_time = time.time() - start_time
             
             # 清空文本框和上一次的求和结果
             self.digits_text.delete(1.0, tk.END)
@@ -134,10 +141,16 @@ class DigitRecognitionApp:
             for number in numbers:
                 self.digits_text.insert(tk.END, f"{number}\n")
             
-            self.status_var.set(f"识别完成，找到 {len(numbers)} 个数字")
-            messagebox.showinfo("识别完成", f"成功识别到 {len(numbers)} 个数字")
+            # 自动计算并显示总和
+            self.sum_result_var.set(str(total))
+            
+            # 识别结束后用蓝字显示求和结果以及识别耗时
+            self.status_label.config(fg="blue")
+            # 显示识别耗时和总和，移除弹窗和数字数量
+            self.status_var.set(f"识别完成，耗时: {elapsed_time:.2f} 秒，总和: {total}")
         except Exception as e:
-            messagebox.showerror("错误", f"识别失败: {str(e)}")
+            # 识别失败时用红字显示错误信息
+            self.status_label.config(fg="red")
             self.status_var.set(f"识别失败: {str(e)}")
     
     def calculate_sum(self):
@@ -164,10 +177,18 @@ class DigitRecognitionApp:
             total_sum = sum(numbers)
             self.sum_result_var.set(str(total_sum))
             
-            self.status_var.set(f"计算完成，共 {len(numbers)} 个有效数字")
+            # 计算完成后用蓝字显示结果
+            self.status_label.config(fg="blue")
+            self.status_var.set("计算完成")
         except Exception as e:
-            messagebox.showerror("错误", f"计算失败: {str(e)}")
+            # 计算失败时用红字显示错误信息
+            self.status_label.config(fg="red")
             self.status_var.set(f"计算失败: {str(e)}")
+    
+    def on_digits_modified(self, event):
+        """当用户修改数字时自动更新总和"""
+        # 调用 calculate_sum 方法更新总和
+        self.calculate_sum()
 
 if __name__ == "__main__":
     root = tk.Tk()
