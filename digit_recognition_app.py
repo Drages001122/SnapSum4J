@@ -4,6 +4,7 @@ from tkinter.scrolledtext import ScrolledText
 import os
 import sys
 import time
+import threading
 from paddleocr import PaddleOCR
 
 # 解决打包后路径问题的核心函数：获取资源真实路径
@@ -141,34 +142,61 @@ class DigitRecognitionApp:
         # 识别过程中用红字显示正在识别
         self.status_label.config(fg="red")
         self.status_var.set("正在识别数字...")
-        self.root.update()
         
-        try:
-            # 记录开始时间
-            start_time = time.time()
-            
-            numbers, total = recognize_image(image_path)
-            
-            # 计算识别耗时
-            elapsed_time = time.time() - start_time
-            
+        # 定义计算完成后的回调（用于更新UI）
+        def on_recognition_done(result):
+            # 用after()回到UI线程更新界面
+            self.root.after(0, lambda: self.update_ui_after_recognition(result))
+        
+        # 启动后台线程
+        def recognition_thread():
+            try:
+                # 记录开始时间
+                start_time = time.time()
+                
+                numbers, total = recognize_image(image_path)
+                
+                # 计算识别耗时
+                elapsed_time = time.time() - start_time
+                
+                # 返回识别结果
+                return {
+                    "success": True,
+                    "numbers": numbers,
+                    "total": total,
+                    "elapsed_time": elapsed_time
+                }
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": str(e)
+                }
+        
+        # 启动后台线程
+        calc_thread = threading.Thread(target=lambda: on_recognition_done(recognition_thread()))
+        calc_thread.daemon = True  # 守护线程，程序退出时自动结束
+        calc_thread.start()
+    
+    def update_ui_after_recognition(self, result):
+        """识别完成后更新UI"""
+        if result["success"]:
             # 清空文本框和上一次的求和结果
             self.digits_text.delete(1.0, tk.END)
             self.sum_result_var.set("")
-            for number in numbers:
+            for number in result["numbers"]:
                 self.digits_text.insert(tk.END, f"{number}\n")
             
             # 自动计算并显示总和
-            self.sum_result_var.set(str(total))
+            self.sum_result_var.set(str(result["total"]))
             
             # 识别结束后用蓝字显示求和结果以及识别耗时
             self.status_label.config(fg="blue")
             # 显示识别耗时和总和，移除弹窗和数字数量
-            self.status_var.set(f"识别完成，耗时: {elapsed_time:.2f} 秒，总和: {total}")
-        except Exception as e:
+            self.status_var.set(f"识别完成，耗时: {result['elapsed_time']:.2f} 秒，总和: {result['total']}")
+        else:
             # 识别失败时用红字显示错误信息
             self.status_label.config(fg="red")
-            self.status_var.set(f"识别失败: {str(e)}")
+            self.status_var.set(f"识别失败: {result['error']}")
     
     def calculate_sum(self):
         """计算文本框中所有数字的总和"""
