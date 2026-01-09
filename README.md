@@ -11,55 +11,6 @@ SnapSum4J 是一个基于 Python 的数字识别与求和工具，能够识别�
 - 🧮 **自动求和**：计算所有识别和手动添加数字的总和
 - 🔢 **结果展示**：清晰展示识别到的数字和最终求和结果
 
-## 技术栈
-
-- **Python 3.x**：核心编程语言
-- **Tkinter**：GUI 界面库
-- **EasyOCR**：数字识别库
-- **Regular Expressions**：数字提取
-- **PyInstaller**：应用打包工具
-
-## 安装步骤
-
-### 方法一：使用打包好的可执行文件
-
-1. 下载项目的打包版本
-2. 解压到任意目录
-3. 运行 `SnapSum4J.exe` 即可使用
-
-### 方法二：从源码运行
-
-1. **克隆项目**
-   ```bash
-   git clone https://github.com/your-username/SnapSum4J.git
-   cd SnapSum4J
-   ```
-
-2. **创建虚拟环境**
-   ```bash
-   python -m venv venv
-   ```
-
-3. **激活虚拟环境**
-   - Windows:
-     ```bash
-     venv\Scripts\activate
-     ```
-   - macOS/Linux:
-     ```bash
-     source venv/bin/activate
-     ```
-
-4. **安装依赖**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-5. **运行应用**
-   ```bash
-   python digit_recognition_app.py
-   ```
-
 ## 使用方法
 
 1. **上传图片**：点击"选择图片"按钮，浏览并选择包含数字的图片
@@ -81,17 +32,6 @@ SnapSum4J/
 └── README.md                 # 项目说明文档
 ```
 
-## 依赖项
-
-主要依赖项包括：
-- easyocr==1.7.2
-- numpy==2.2.6
-- opencv-python-headless==4.12.0.88
-- torch==2.9.1+cpu
-- transformers==4.33.2
-
-完整依赖项列表请查看 `requirements.txt` 文件。
-
 ## 打包应用
 
 如需打包应用为可执行文件，请运行：
@@ -105,7 +45,7 @@ python build.py
 ## 注意事项
 
 - 图片识别可能会受到图片质量、光照条件等因素的影响
-- 识别速度取决于图片大小和计算机性能
+- 识别速度取决于计算机性能
 - 目前仅支持识别数字
 
 
