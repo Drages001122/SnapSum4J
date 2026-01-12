@@ -35,3 +35,6 @@ images/
 
 # Zip files
 *.zip
+
+# Packaging
+package.py
