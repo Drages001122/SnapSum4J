@@ -144,7 +144,8 @@ class DigitRecognitionApp:
             # 创建预览窗口，大小与图片一致
             preview_window = tk.Toplevel(self.root)
             preview_window.title("图片预览 - 请框选要识别的区域")
-            preview_window.geometry(f"{img_width}x{img_height}")
+            # 为了容纳按钮，稍微增加窗口高度
+            preview_window.geometry(f"{img_width}x{img_height + 100}")
             preview_window.resizable(True, True)
             
             # 转换为Tkinter可用的图片格式
@@ -162,6 +163,7 @@ class DigitRecognitionApp:
             self.start_x = None
             self.start_y = None
             self.rect = None
+            selected_region = None  # 存储最终选择的区域
             
             # 鼠标按下事件
             def on_mouse_down(event):
@@ -182,6 +184,7 @@ class DigitRecognitionApp:
             
             # 鼠标释放事件
             def on_mouse_up(event):
+                nonlocal selected_region
                 if self.start_x is not None and self.start_y is not None:
                     end_x = canvas.canvasx(event.x)
                     end_y = canvas.canvasy(event.y)
@@ -194,41 +197,59 @@ class DigitRecognitionApp:
                     
                     # 检查选择区域是否有效
                     if x2 - x1 > 10 and y2 - y1 > 10:
-                        # 直接使用画布上的坐标（因为画布大小与原始图片一致）
-                        original_x1 = int(x1)
-                        original_y1 = int(y1)
-                        original_x2 = int(x2)
-                        original_y2 = int(y2)
-                        
-                        # 裁剪选中区域
-                        cropped_image = Image.open(image_path).crop((original_x1, original_y1, original_x2, original_y2))
-                        
-                        # 保存为临时文件
-                        temp_file = os.path.join(os.path.dirname(image_path), "selected_region_temp.png")
-                        cropped_image.save(temp_file)
-                        
-                        # 更新图片路径为选中的区域
-                        self.image_path_var.set(temp_file)
-                        
-                        # 关闭预览窗口
-                        preview_window.destroy()
-                        
-                        # 开始识别
-                        self.recognize_digits()
+                        # 存储选中的区域
+                        selected_region = (x1, y1, x2, y2)
                     else:
+                        selected_region = None
                         messagebox.showinfo("提示", "请选择一个更大的区域")
                     
                     # 重置变量
                     self.start_x = None
                     self.start_y = None
             
+            # 确认按钮回调函数
+            def on_confirm():
+                nonlocal selected_region
+                if selected_region:
+                    # 直接使用画布上的坐标（因为画布大小与原始图片一致）
+                    original_x1 = int(selected_region[0])
+                    original_y1 = int(selected_region[1])
+                    original_x2 = int(selected_region[2])
+                    original_y2 = int(selected_region[3])
+                    
+                    # 裁剪选中区域
+                    cropped_image = Image.open(image_path).crop((original_x1, original_y1, original_x2, original_y2))
+                    
+                    # 保存为临时文件
+                    temp_file = os.path.join(os.path.dirname(image_path), "selected_region_temp.png")
+                    cropped_image.save(temp_file)
+                    
+                    # 更新图片路径为选中的区域
+                    self.image_path_var.set(temp_file)
+                    
+                    # 关闭预览窗口
+                    preview_window.destroy()
+                    
+                    # 开始识别
+                    self.recognize_digits()
+                else:
+                    messagebox.showinfo("提示", "请先选择一个区域")
+            
             # 绑定鼠标事件
             canvas.bind("<Button-1>", on_mouse_down)
             canvas.bind("<B1-Motion>", on_mouse_move)
             canvas.bind("<ButtonRelease-1>", on_mouse_up)
             
+            # 创建按钮框架
+            button_frame = tk.Frame(preview_window)
+            button_frame.pack(pady=20)
+            
+            # 添加确认按钮
+            confirm_button = tk.Button(button_frame, text="确认选择", command=on_confirm, font=("微软雅黑", 12), width=15)
+            confirm_button.pack(pady=10)
+            
             # 添加提示标签
-            hint_label = tk.Label(preview_window, text="提示: 按住鼠标左键拖拽选择要识别的区域")
+            hint_label = tk.Label(preview_window, text="提示: 按住鼠标左键拖拽选择要识别的区域，可反复选择直到点击确认")
             hint_label.pack(pady=10)
             
         except Exception as e:
@@ -266,21 +287,24 @@ class DigitRecognitionApp:
                 # 计算识别耗时
                 elapsed_time = time.time() - start_time
                 
-                # 返回识别结果
-                return {
+                # 构造识别结果
+                result = {
                     "success": True,
                     "numbers": numbers,
                     "total": total,
                     "elapsed_time": elapsed_time
                 }
             except Exception as e:
-                return {
+                result = {
                     "success": False,
                     "error": str(e)
                 }
+            
+            # 识别完成后调用回调函数更新UI
+            on_recognition_done(result)
         
         # 启动后台线程
-        calc_thread = threading.Thread(target=lambda: on_recognition_done(recognition_thread()))
+        calc_thread = threading.Thread(target=recognition_thread)
         calc_thread.daemon = True  # 守护线程，程序退出时自动结束
         calc_thread.start()
     
