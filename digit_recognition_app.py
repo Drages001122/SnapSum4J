@@ -6,6 +6,7 @@ import sys
 import time
 import threading
 from paddleocr import PaddleOCR
+from PIL import Image, ImageTk
 
 # 解决打包后路径问题的核心函数：获取资源真实路径
 def get_resource_path(relative_path):
@@ -130,8 +131,109 @@ class DigitRecognitionApp:
         if file_path:
             self.image_path_var.set(file_path)
             self.status_var.set(f"已选择图片: {os.path.basename(file_path)}")
-            # 自动识别图片
-            self.recognize_digits()
+            # 显示图片预览并允许用户选择区域
+            self.preview_and_select_region(file_path)
+    
+    def preview_and_select_region(self, image_path):
+        """显示图片预览并允许用户选择区域"""
+        # 加载图片
+        try:
+            image = Image.open(image_path)
+            img_width, img_height = image.size
+            
+            # 创建预览窗口，大小与图片一致
+            preview_window = tk.Toplevel(self.root)
+            preview_window.title("图片预览 - 请框选要识别的区域")
+            preview_window.geometry(f"{img_width}x{img_height}")
+            preview_window.resizable(True, True)
+            
+            # 转换为Tkinter可用的图片格式
+            photo = ImageTk.PhotoImage(image)
+            
+            # 创建画布，大小与图片一致
+            canvas = tk.Canvas(preview_window, width=img_width, height=img_height)
+            canvas.pack(fill=tk.BOTH, expand=True)
+            
+            # 在画布上显示图片
+            canvas.create_image(0, 0, anchor=tk.NW, image=photo)
+            canvas.image = photo  # 保持引用，防止被垃圾回收
+            
+            # 选择区域的变量
+            self.start_x = None
+            self.start_y = None
+            self.rect = None
+            
+            # 鼠标按下事件
+            def on_mouse_down(event):
+                self.start_x = canvas.canvasx(event.x)
+                self.start_y = canvas.canvasy(event.y)
+                # 创建矩形
+                if self.rect:
+                    canvas.delete(self.rect)
+                self.rect = canvas.create_rectangle(self.start_x, self.start_y, self.start_x, self.start_y, outline="red", width=2)
+            
+            # 鼠标移动事件
+            def on_mouse_move(event):
+                if self.start_x is not None and self.start_y is not None:
+                    current_x = canvas.canvasx(event.x)
+                    current_y = canvas.canvasy(event.y)
+                    # 更新矩形
+                    canvas.coords(self.rect, self.start_x, self.start_y, current_x, current_y)
+            
+            # 鼠标释放事件
+            def on_mouse_up(event):
+                if self.start_x is not None and self.start_y is not None:
+                    end_x = canvas.canvasx(event.x)
+                    end_y = canvas.canvasy(event.y)
+                    
+                    # 确保坐标顺序正确
+                    x1 = min(self.start_x, end_x)
+                    y1 = min(self.start_y, end_y)
+                    x2 = max(self.start_x, end_x)
+                    y2 = max(self.start_y, end_y)
+                    
+                    # 检查选择区域是否有效
+                    if x2 - x1 > 10 and y2 - y1 > 10:
+                        # 直接使用画布上的坐标（因为画布大小与原始图片一致）
+                        original_x1 = int(x1)
+                        original_y1 = int(y1)
+                        original_x2 = int(x2)
+                        original_y2 = int(y2)
+                        
+                        # 裁剪选中区域
+                        cropped_image = Image.open(image_path).crop((original_x1, original_y1, original_x2, original_y2))
+                        
+                        # 保存为临时文件
+                        temp_file = os.path.join(os.path.dirname(image_path), "selected_region_temp.png")
+                        cropped_image.save(temp_file)
+                        
+                        # 更新图片路径为选中的区域
+                        self.image_path_var.set(temp_file)
+                        
+                        # 关闭预览窗口
+                        preview_window.destroy()
+                        
+                        # 开始识别
+                        self.recognize_digits()
+                    else:
+                        messagebox.showinfo("提示", "请选择一个更大的区域")
+                    
+                    # 重置变量
+                    self.start_x = None
+                    self.start_y = None
+            
+            # 绑定鼠标事件
+            canvas.bind("<Button-1>", on_mouse_down)
+            canvas.bind("<B1-Motion>", on_mouse_move)
+            canvas.bind("<ButtonRelease-1>", on_mouse_up)
+            
+            # 添加提示标签
+            hint_label = tk.Label(preview_window, text="提示: 按住鼠标左键拖拽选择要识别的区域")
+            hint_label.pack(pady=10)
+            
+        except Exception as e:
+            messagebox.showerror("错误", f"无法加载图片: {str(e)}")
+            preview_window.destroy()
     
     def recognize_digits(self):
         """识别图片中的数字"""
