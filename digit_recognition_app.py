@@ -141,6 +141,9 @@ class DigitRecognitionApp:
             image = Image.open(image_path)
             img_width, img_height = image.size
             
+            # 禁用主窗口
+            self.root.attributes('-disabled', True)
+            
             # 创建预览窗口，大小与图片一致
             preview_window = tk.Toplevel(self.root)
             preview_window.title("图片预览 - 请框选要识别的区域")
@@ -220,8 +223,8 @@ class DigitRecognitionApp:
                     # 裁剪选中区域
                     cropped_image = Image.open(image_path).crop((original_x1, original_y1, original_x2, original_y2))
                     
-                    # 保存为临时文件
-                    temp_file = os.path.join(os.path.dirname(image_path), "selected_region_temp.png")
+                    # 保存为临时文件到根目录
+                    temp_file = os.path.join(os.path.abspath("."), "selected_region_temp.png")
                     cropped_image.save(temp_file)
                     
                     # 更新图片路径为选中的区域
@@ -229,6 +232,9 @@ class DigitRecognitionApp:
                     
                     # 关闭预览窗口
                     preview_window.destroy()
+                    
+                    # 重新启用主窗口
+                    self.root.attributes('-disabled', False)
                     
                     # 开始识别
                     self.recognize_digits()
@@ -255,6 +261,8 @@ class DigitRecognitionApp:
         except Exception as e:
             messagebox.showerror("错误", f"无法加载图片: {str(e)}")
             preview_window.destroy()
+            # 重新启用主窗口
+            self.root.attributes('-disabled', False)
     
     def recognize_digits(self):
         """识别图片中的数字"""
@@ -328,6 +336,15 @@ class DigitRecognitionApp:
             # 识别失败时用红字显示错误信息
             self.status_label.config(fg="red")
             self.status_var.set(f"识别失败: {result['error']}")
+        
+        # 识别完成后删除临时文件
+        temp_file = self.image_path_var.get()
+        if temp_file and "selected_region_temp.png" in temp_file:
+            try:
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+            except Exception as e:
+                print(f"删除临时文件失败: {str(e)}")
     
     def calculate_sum(self):
         """计算文本框中所有数字的总和"""
