@@ -112,6 +112,11 @@ class DigitRecognitionApp:
         self.sum_result_entry = tk.Entry(sum_frame, textvariable=self.sum_result_var, width=20, font=("Courier New", 12), state="readonly")
         self.sum_result_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
         
+        # 置顶按钮
+        self.topmost_var = tk.BooleanVar(value=False)
+        self.topmost_button = tk.Checkbutton(main_frame, text="窗口置顶", variable=self.topmost_var, command=self.toggle_topmost)
+        self.topmost_button.pack(anchor=tk.W, pady=5)
+        
         # 状态标签
         self.status_var = tk.StringVar()
         self.status_label = tk.Label(main_frame, textvariable=self.status_var, fg="blue", font=("微软雅黑", 9))
@@ -234,6 +239,16 @@ class DigitRecognitionApp:
         """当用户修改数字时自动更新总和"""
         # 调用 calculate_sum 方法更新总和
         self.calculate_sum()
+    
+    def toggle_topmost(self):
+        """切换窗口置顶状态"""
+        is_topmost = self.topmost_var.get()
+        self.root.attributes('-topmost', is_topmost)
+        # 更新状态标签显示置顶状态
+        if is_topmost:
+            self.status_var.set("窗口已置顶")
+        else:
+            self.status_var.set("窗口已取消置顶")
 
 if __name__ == "__main__":
     root = tk.Tk()
