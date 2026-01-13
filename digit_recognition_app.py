@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import threading
+import pyautogui
 from paddleocr import PaddleOCR
 from PIL import Image, ImageTk
 
@@ -68,7 +69,7 @@ class DigitRecognitionApp:
     def __init__(self, root):
         self.root = root
         self.root.title("数字识别与求和工具")
-        self.root.geometry("600x500")
+        self.root.geometry("1100x800")
         self.root.resizable(True, True)
         
         # 创建主框架
@@ -89,6 +90,10 @@ class DigitRecognitionApp:
         
         upload_button = tk.Button(upload_frame, text="选择图片", command=self.upload_image)
         upload_button.pack(side=tk.LEFT, padx=5)
+        
+        # 添加屏幕截取按钮
+        capture_button = tk.Button(upload_frame, text="截取屏幕区域", command=self.capture_screen_region)
+        capture_button.pack(side=tk.LEFT, padx=5)
         
         # 数字显示区域
         text_frame = tk.Frame(main_frame)
@@ -339,7 +344,7 @@ class DigitRecognitionApp:
         
         # 识别完成后删除临时文件
         temp_file = self.image_path_var.get()
-        if temp_file and "selected_region_temp.png" in temp_file:
+        if temp_file and ("selected_region_temp.png" in temp_file or "captured_screen_region.png" in temp_file):
             try:
                 if os.path.exists(temp_file):
                     os.remove(temp_file)
@@ -392,6 +397,106 @@ class DigitRecognitionApp:
             self.status_var.set("窗口已置顶")
         else:
             self.status_var.set("窗口已取消置顶")
+    
+    def capture_screen_region(self):
+        """截取屏幕区域"""
+        # 获取屏幕尺寸
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        
+        # 创建全屏覆盖窗口
+        capture_window = tk.Toplevel(self.root)
+        capture_window.attributes('-fullscreen', True)
+        capture_window.attributes('-alpha', 0.3)  # 设置透明度
+        capture_window.attributes('-topmost', True)
+        capture_window.config(cursor='cross')
+        
+        # 创建画布
+        canvas = tk.Canvas(capture_window, width=screen_width, height=screen_height)
+        canvas.pack(fill=tk.BOTH, expand=True)
+        
+        # 选择区域的变量
+        start_x = None
+        start_y = None
+        rect = None
+        
+        # 鼠标按下事件
+        def on_mouse_down(event):
+            nonlocal start_x, start_y, rect
+            start_x = event.x_root
+            start_y = event.y_root
+            # 创建矩形
+            if rect:
+                canvas.delete(rect)
+            rect = canvas.create_rectangle(start_x, start_y, start_x, start_y, outline="red", width=2)
+        
+        # 鼠标移动事件
+        def on_mouse_move(event):
+            nonlocal rect
+            if start_x is not None and start_y is not None:
+                current_x = event.x_root
+                current_y = event.y_root
+                # 更新矩形
+                canvas.coords(rect, start_x, start_y, current_x, current_y)
+        
+        # 鼠标释放事件
+        def on_mouse_up(event):
+            nonlocal start_x, start_y
+            if start_x is not None and start_y is not None:
+                end_x = event.x_root
+                end_y = event.y_root
+                
+                # 确保坐标顺序正确
+                x1 = min(start_x, end_x)
+                y1 = min(start_y, end_y)
+                x2 = max(start_x, end_x)
+                y2 = max(start_y, end_y)
+                
+                # 检查选择区域是否有效
+                if x2 - x1 > 10 and y2 - y1 > 10:
+                    # 关闭捕获窗口
+                    capture_window.destroy()
+                    # 截取屏幕区域
+                    self.capture_selected_region(x1, y1, x2, y2)
+                else:
+                    # 关闭捕获窗口
+                    capture_window.destroy()
+                    messagebox.showinfo("提示", "请选择一个更大的区域")
+                
+                # 重置变量
+                start_x = None
+                start_y = None
+        
+        # 绑定鼠标事件
+        canvas.bind("<Button-1>", on_mouse_down)
+        canvas.bind("<B1-Motion>", on_mouse_move)
+        canvas.bind("<ButtonRelease-1>", on_mouse_up)
+        
+        # 按ESC键取消
+        def on_escape(event):
+            capture_window.destroy()
+        
+        capture_window.bind("<Escape>", on_escape)
+    
+    def capture_selected_region(self, x1, y1, x2, y2):
+        """根据坐标截取屏幕区域"""
+        try:
+            # 截取屏幕区域
+            screenshot = pyautogui.screenshot(region=(x1, y1, x2 - x1, y2 - y1))
+            
+            # 保存为临时文件
+            temp_file = os.path.join(os.path.abspath("."), "captured_screen_region.png")
+            screenshot.save(temp_file)
+            
+            # 更新图片路径
+            self.image_path_var.set(temp_file)
+            self.status_var.set(f"已截取屏幕区域，保存为: {os.path.basename(temp_file)}")
+            
+            # 开始识别
+            self.recognize_digits()
+        except Exception as e:
+            messagebox.showerror("错误", f"截取屏幕失败: {str(e)}")
+            self.status_var.set(f"截取屏幕失败: {str(e)}")
 
 if __name__ == "__main__":
     root = tk.Tk()
