@@ -146,22 +146,32 @@ class DigitRecognitionApp:
             image = Image.open(image_path)
             img_width, img_height = image.size
             
+            # 放大倍数
+            scale_factor = 3
+            
+            # 计算放大后的尺寸
+            scaled_width = img_width * scale_factor
+            scaled_height = img_height * scale_factor
+            
             # 禁用主窗口
             self.root.attributes('-disabled', True)
             
-            # 创建预览窗口，大小与图片一致
+            # 创建预览窗口，大小为图片的3倍
             preview_window = tk.Toplevel(self.root)
             preview_window.title("图片预览 - 请框选要识别的区域")
             # 为了容纳按钮，稍微增加窗口高度
-            preview_window.geometry(f"{img_width}x{img_height + 100}")
+            preview_window.geometry(f"{scaled_width}x{scaled_height + 100}")
             preview_window.resizable(True, True)
             
-            # 转换为Tkinter可用的图片格式
-            photo = ImageTk.PhotoImage(image)
+            # 放大图片
+            scaled_image = image.resize((scaled_width, scaled_height))
             
-            # 创建画布，大小与图片一致
-            canvas = tk.Canvas(preview_window, width=img_width, height=img_height)
-            canvas.pack(fill=tk.BOTH, expand=True)
+            # 转换为Tkinter可用的图片格式
+            photo = ImageTk.PhotoImage(scaled_image)
+            
+            # 创建画布，大小为图片的3倍
+            canvas = tk.Canvas(preview_window, width=scaled_width, height=scaled_height)
+            canvas.pack()
             
             # 在画布上显示图片
             canvas.create_image(0, 0, anchor=tk.NW, image=photo)
@@ -219,11 +229,11 @@ class DigitRecognitionApp:
             def on_confirm():
                 nonlocal selected_region
                 if selected_region:
-                    # 直接使用画布上的坐标（因为画布大小与原始图片一致）
-                    original_x1 = int(selected_region[0])
-                    original_y1 = int(selected_region[1])
-                    original_x2 = int(selected_region[2])
-                    original_y2 = int(selected_region[3])
+                    # 将放大后的画布坐标转换回原始图片坐标
+                    original_x1 = int(selected_region[0] / scale_factor)
+                    original_y1 = int(selected_region[1] / scale_factor)
+                    original_x2 = int(selected_region[2] / scale_factor)
+                    original_y2 = int(selected_region[3] / scale_factor)
                     
                     # 裁剪选中区域
                     cropped_image = Image.open(image_path).crop((original_x1, original_y1, original_x2, original_y2))
