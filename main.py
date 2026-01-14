@@ -1,4 +1,5 @@
 import tkinter as tk
+
 from src.gui import DigitRecognitionApp
 
 if __name__ == "__main__":
