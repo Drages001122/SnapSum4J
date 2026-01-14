@@ -415,6 +415,8 @@ class DigitRecognitionApp:
                 else:
                     # 关闭捕获窗口
                     capture_window.destroy()
+                    # 恢复主窗口
+                    self.root.deiconify()
                     messagebox.showinfo("提示", "请选择一个更大的区域")
                 
                 # 重置变量
@@ -426,11 +428,13 @@ class DigitRecognitionApp:
         canvas.bind("<B1-Motion>", on_mouse_move)
         canvas.bind("<ButtonRelease-1>", on_mouse_up)
         
-        # 按ESC键取消
-        def on_escape(event):
+        # 点击鼠标右键取消
+        def on_right_click(event):
             capture_window.destroy()
+            # 恢复主窗口
+            self.root.deiconify()
         
-        capture_window.bind("<Escape>", on_escape)
+        canvas.bind("<Button-3>", on_right_click)
     
     def capture_selected_region(self, x1, y1, x2, y2):
         """根据坐标截取屏幕区域"""
