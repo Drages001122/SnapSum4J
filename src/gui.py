@@ -1,5 +1,5 @@
 import os
-import threading
+import multiprocessing
 import time
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -9,6 +9,30 @@ import pyautogui
 from PIL import Image, ImageTk
 
 from .ocr import recognize_image
+
+# 定义识别函数，用于在子进程中执行
+def recognition_process(image_path, queue):
+    try:
+        # 记录开始时间
+        start_time = time.time()
+
+        numbers, total = recognize_image(image_path)
+
+        # 计算识别耗时
+        elapsed_time = time.time() - start_time
+
+        # 构造识别结果
+        result = {
+            "success": True,
+            "numbers": numbers,
+            "total": total,
+            "elapsed_time": elapsed_time,
+        }
+    except Exception as e:
+        result = {"success": False, "error": str(e)}
+
+    # 将结果放入队列
+    queue.put(result)
 
 
 class DigitRecognitionApp:
@@ -292,39 +316,27 @@ class DigitRecognitionApp:
         self.status_label.config(fg="red")
         self.status_var.set("正在识别数字...")
 
-        # 定义计算完成后的回调（用于更新UI）
-        def on_recognition_done(result):
-            # 用after()回到UI线程更新界面
-            self.root.after(0, lambda: self.update_ui_after_recognition(result))
+        # 创建队列用于进程间通信
+        result_queue = multiprocessing.Queue()
 
-        # 启动后台线程
-        def recognition_thread():
-            try:
-                # 记录开始时间
-                start_time = time.time()
+        # 启动后台进程
+        calc_process = multiprocessing.Process(target=recognition_process, args=(image_path, result_queue))
+        calc_process.daemon = True  # 守护进程，程序退出时自动结束
+        calc_process.start()
 
-                numbers, total = recognize_image(image_path)
+        # 检查队列是否有结果的函数
+        def check_result():
+            if not result_queue.empty():
+                # 获取结果
+                result = result_queue.get()
+                # 更新UI
+                self.update_ui_after_recognition(result)
+            else:
+                # 继续检查
+                self.root.after(100, check_result)
 
-                # 计算识别耗时
-                elapsed_time = time.time() - start_time
-
-                # 构造识别结果
-                result = {
-                    "success": True,
-                    "numbers": numbers,
-                    "total": total,
-                    "elapsed_time": elapsed_time,
-                }
-            except Exception as e:
-                result = {"success": False, "error": str(e)}
-
-            # 识别完成后调用回调函数更新UI
-            on_recognition_done(result)
-
-        # 启动后台线程
-        calc_thread = threading.Thread(target=recognition_thread)
-        calc_thread.daemon = True  # 守护线程，程序退出时自动结束
-        calc_thread.start()
+        # 开始检查结果
+        self.root.after(100, check_result)
 
     def update_ui_after_recognition(self, result):
         """识别完成后更新UI"""
