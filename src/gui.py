@@ -8,15 +8,59 @@ from tkinter.scrolledtext import ScrolledText
 import pyautogui
 from PIL import Image, ImageTk
 
-from .ocr import recognize_image
+# 全局变量，用于存储OCR实例（在子进程中初始化）
+global_ocr = None
+
+# 进程池初始化函数，确保每个子进程只加载一次模型
+def init_worker():
+    global global_ocr
+    if global_ocr is None:
+        from .ocr import PaddleOCR
+        from .utils import get_resource_path
+        # 初始化 PaddleOCR 实例
+        global_ocr = PaddleOCR(
+            use_doc_orientation_classify=False,
+            use_doc_unwarping=False,
+            use_textline_orientation=False,
+            text_detection_model_dir=get_resource_path("models/PP-OCRv5_server_det"),
+            text_recognition_model_dir=get_resource_path("models/PP-OCRv5_server_rec"),
+        )
 
 # 定义识别函数，用于在子进程中执行
-def recognition_process(image_path, queue):
+def recognition_process(image_path):
     try:
         # 记录开始时间
         start_time = time.time()
 
-        numbers, total = recognize_image(image_path)
+        # 使用全局OCR实例
+        global global_ocr
+        if global_ocr is None:
+            init_worker()
+        
+        # 识别图片
+        result = global_ocr.predict(input=image_path)
+        # 提取数字
+        all_numbers = []
+        if result:
+            rec_texts = []
+            # 遍历result中的每个OCRResult对象
+            for res in result:
+                try:
+                    # 检查res对象是否有rec_texts属性
+                    if hasattr(res, "rec_texts"):
+                        rec_texts.extend(res.rec_texts)
+                    # 或者检查是否可以通过字典方式访问
+                    elif isinstance(res, dict) and "rec_texts" in res:
+                        rec_texts.extend(res["rec_texts"])
+                except Exception as e:
+                    print(f"Error accessing rec_texts: {e}")
+
+            # 过滤出数字（支持小数）
+            for text in rec_texts:
+                if text.replace(".", "", 1).isdigit():
+                    all_numbers.append(text)
+        # 计算总和
+        total_sum = sum(float(num) for num in all_numbers)
 
         # 计算识别耗时
         elapsed_time = time.time() - start_time
@@ -24,15 +68,14 @@ def recognition_process(image_path, queue):
         # 构造识别结果
         result = {
             "success": True,
-            "numbers": numbers,
-            "total": total,
+            "numbers": all_numbers,
+            "total": total_sum,
             "elapsed_time": elapsed_time,
         }
     except Exception as e:
         result = {"success": False, "error": str(e)}
 
-    # 将结果放入队列
-    queue.put(result)
+    return result
 
 
 class DigitRecognitionApp:
@@ -41,6 +84,9 @@ class DigitRecognitionApp:
         self.root.title("数字识别与求和工具")
         self.root.geometry("1100x800")
         self.root.resizable(True, True)
+
+        # 创建进程池（在类初始化时创建，只创建一次）
+        self.process_pool = multiprocessing.Pool(processes=1, initializer=init_worker)
 
         # 创建主框架
         main_frame = tk.Frame(root, padx=20, pady=20)
@@ -316,27 +362,13 @@ class DigitRecognitionApp:
         self.status_label.config(fg="red")
         self.status_var.set("正在识别数字...")
 
-        # 创建队列用于进程间通信
-        result_queue = multiprocessing.Queue()
+        # 定义回调函数处理结果
+        def handle_result(result):
+            # 更新UI
+            self.update_ui_after_recognition(result)
 
-        # 启动后台进程
-        calc_process = multiprocessing.Process(target=recognition_process, args=(image_path, result_queue))
-        calc_process.daemon = True  # 守护进程，程序退出时自动结束
-        calc_process.start()
-
-        # 检查队列是否有结果的函数
-        def check_result():
-            if not result_queue.empty():
-                # 获取结果
-                result = result_queue.get()
-                # 更新UI
-                self.update_ui_after_recognition(result)
-            else:
-                # 继续检查
-                self.root.after(100, check_result)
-
-        # 开始检查结果
-        self.root.after(100, check_result)
+        # 使用进程池提交任务
+        self.process_pool.apply_async(recognition_process, (image_path,), callback=handle_result)
 
     def update_ui_after_recognition(self, result):
         """识别完成后更新UI"""
