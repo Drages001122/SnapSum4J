@@ -15,7 +15,7 @@ global_ocr = None
 def init_worker():
     global global_ocr
     if global_ocr is None:
-        from .ocr import PaddleOCR
+        from paddleocr import PaddleOCR
         from .utils import get_resource_path
 
         # 初始化 PaddleOCR 实例
