@@ -2,6 +2,7 @@ from paddleocr import PaddleOCR
 
 from .utils import get_resource_path
 
+
 # 复用现有的数字识别功能
 def recognize_image(image_path):
     """识别图片中的数字并计算总和"""
@@ -14,7 +15,7 @@ def recognize_image(image_path):
             text_detection_model_dir=get_resource_path("models/PP-OCRv5_server_det"),
             text_recognition_model_dir=get_resource_path("models/PP-OCRv5_server_rec"),
         )
-        
+
         # 识别图片
         result = ocr.predict(input=image_path)
         # 提取数字

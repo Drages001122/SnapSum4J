@@ -1,5 +1,5 @@
-import os
 import multiprocessing
+import os
 import time
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -17,6 +17,7 @@ def init_worker():
     if global_ocr is None:
         from .ocr import PaddleOCR
         from .utils import get_resource_path
+
         # 初始化 PaddleOCR 实例
         global_ocr = PaddleOCR(
             use_doc_orientation_classify=False,
