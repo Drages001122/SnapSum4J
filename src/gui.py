@@ -130,6 +130,14 @@ class DigitRecognitionApp:
             # 为了容纳按钮，稍微增加窗口高度
             preview_window.geometry(f"{scaled_width}x{scaled_height + 100}")
             preview_window.resizable(True, True)
+            
+            # 绑定窗口关闭事件，确保主窗口能被重新启用
+            def on_window_close():
+                preview_window.destroy()
+                # 重新启用主窗口
+                self.root.attributes("-disabled", False)
+            
+            preview_window.protocol("WM_DELETE_WINDOW", on_window_close)
 
             # 放大图片
             scaled_image = image.resize((scaled_width, scaled_height))
