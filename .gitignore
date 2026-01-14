@@ -36,6 +36,5 @@ images/
 # Zip files
 *.zip
 
-# Packaging
-package.py
-export_requirements.py
+# Scripts
+scripts/
