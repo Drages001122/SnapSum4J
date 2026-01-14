@@ -430,9 +430,13 @@ class DigitRecognitionApp:
         
         # 点击鼠标右键取消
         def on_right_click(event):
-            capture_window.destroy()
-            # 恢复主窗口
-            self.root.deiconify()
+            # 延迟3秒后取消截图
+            def cancel_after_delay():
+                capture_window.destroy()
+                # 恢复主窗口
+                self.root.deiconify()
+            
+            capture_window.after(100, cancel_after_delay)
         
         canvas.bind("<Button-3>", on_right_click)
     
