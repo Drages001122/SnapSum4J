@@ -28,8 +28,6 @@ class DigitRecognitionApp:
         upload_frame.pack(fill=tk.X, pady=10)
         
         self.image_path_var = tk.StringVar()
-        self.image_path_entry = tk.Entry(upload_frame, textvariable=self.image_path_var, width=50)
-        self.image_path_entry.pack(side=tk.LEFT, padx=5)
         
         upload_button = tk.Button(upload_frame, text="选择图片", command=self.upload_image)
         upload_button.pack(side=tk.LEFT, padx=5)
@@ -353,6 +351,9 @@ class DigitRecognitionApp:
     
     def capture_screen_region(self):
         """截取屏幕区域"""
+        # 最小化主窗口
+        self.root.iconify()
+        
         # 获取屏幕尺寸
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
@@ -440,6 +441,9 @@ class DigitRecognitionApp:
             # 保存为临时文件
             temp_file = os.path.join(os.path.abspath("."), "captured_screen_region.png")
             screenshot.save(temp_file)
+            
+            # 恢复主窗口
+            self.root.deiconify()
             
             # 更新图片路径
             self.image_path_var.set(temp_file)
