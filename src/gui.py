@@ -83,7 +83,7 @@ class DigitRecognitionApp:
     def __init__(self, root):
         self.root = root
         self.root.title("数字识别与求和工具")
-        self.root.geometry("1100x800")
+        self.root.geometry("600x1100")
         self.root.resizable(True, True)
 
         # 创建进程池（在类初始化时创建，只创建一次）
