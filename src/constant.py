@@ -1,0 +1,1 @@
+SCALE_FACTOR: int = 3

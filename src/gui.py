@@ -25,6 +25,8 @@ from src.gui_constant import (
     HEADER_FONT,
     MAIN_FROM_PADX,
     MAIN_FROM_PADY,
+    PREVIEW_WINDOW_RELAX_HEIGHT,
+    PREVIEW_WINDOW_TITLE,
     STATUS_LABEL_FONT,
     STATUS_LABEL_PADY,
     SUM_LABEL_FONT,
@@ -44,6 +46,7 @@ from src.gui_constant import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
+from src.utils import calculate_scaled_size
 
 # 全局变量，用于存储OCR实例（在子进程中初始化）
 global_ocr = None
@@ -227,33 +230,27 @@ class DigitRecognitionApp:
             self.status_var.set(f"{CHOSEN_IMAGE_DESC} {os.path.basename(file_path)}")
             self.preview_and_select_region(file_path)
 
+    def enable_root(self, enabled: bool):
+        self.root.attributes(  # pyright: ignore[reportUnknownMemberType]
+            "-disabled", not enabled
+        )
+
     def preview_and_select_region(self, image_path: str):
         try:
             image = Image.open(image_path)
-            img_width, img_height = image.size
+            scaled_width, scaled_height = calculate_scaled_size(image)
+            self.enable_root(False)
 
-            # 放大倍数
-            scale_factor = 3
-
-            # 计算放大后的尺寸
-            scaled_width = img_width * scale_factor
-            scaled_height = img_height * scale_factor
-
-            # 禁用主窗口
-            self.root.attributes("-disabled", True)
-
-            # 创建预览窗口，大小为图片的3倍
             preview_window = tk.Toplevel(self.root)
-            preview_window.title("图片预览 - 请框选要识别的区域")
-            # 为了容纳按钮，稍微增加窗口高度
-            preview_window.geometry(f"{scaled_width}x{scaled_height + 100}")
+            preview_window.title(PREVIEW_WINDOW_TITLE)
+            preview_window.geometry(
+                f"{scaled_width}x{scaled_height + PREVIEW_WINDOW_RELAX_HEIGHT}"
+            )
             preview_window.resizable(True, True)
 
-            # 绑定窗口关闭事件，确保主窗口能被重新启用
             def on_window_close():
                 preview_window.destroy()
-                # 重新启用主窗口
-                self.root.attributes("-disabled", False)
+                self.enable_root(True)
 
             preview_window.protocol("WM_DELETE_WINDOW", on_window_close)
 

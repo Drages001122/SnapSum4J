@@ -42,3 +42,6 @@ STATUS_LABEL_FONT: tuple[str, int] = ("微软雅黑", 9)
 STATUS_LABEL_PADY: int = 5
 
 CHOSEN_IMAGE_DESC: str = "已选择图片:"
+
+PREVIEW_WINDOW_TITLE: str = "图片预览 - 请框选要识别的区域"
+PREVIEW_WINDOW_RELAX_HEIGHT: int = 100
