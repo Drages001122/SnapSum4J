@@ -8,14 +8,18 @@ from tkinter.scrolledtext import ScrolledText
 import pyautogui
 from PIL import Image, ImageTk
 
+from src.constant import APP_TITLE, WINDOW_HEIGHT, WINDOW_WIDTH
+
 # 全局变量，用于存储OCR实例（在子进程中初始化）
 global_ocr = None
+
 
 # 进程池初始化函数，确保每个子进程只加载一次模型
 def init_worker():
     global global_ocr
     if global_ocr is None:
         from paddleocr import PaddleOCR
+
         from .utils import get_resource_path
 
         # 初始化 PaddleOCR 实例
@@ -27,6 +31,7 @@ def init_worker():
             text_recognition_model_dir=get_resource_path("models/PP-OCRv5_server_rec"),
         )
 
+
 # 定义识别函数，用于在子进程中执行
 def recognition_process(image_path):
     try:
@@ -37,7 +42,7 @@ def recognition_process(image_path):
         global global_ocr
         if global_ocr is None:
             init_worker()
-        
+
         # 识别图片
         result = global_ocr.predict(input=image_path)
         # 提取数字
@@ -80,10 +85,10 @@ def recognition_process(image_path):
 
 
 class DigitRecognitionApp:
-    def __init__(self, root):
+    def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("数字识别与求和工具")
-        self.root.geometry("600x1100")
+        self.root.title(APP_TITLE)
+        self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.root.resizable(True, True)
 
         # 创建进程池（在类初始化时创建，只创建一次）
@@ -201,13 +206,13 @@ class DigitRecognitionApp:
             # 为了容纳按钮，稍微增加窗口高度
             preview_window.geometry(f"{scaled_width}x{scaled_height + 100}")
             preview_window.resizable(True, True)
-            
+
             # 绑定窗口关闭事件，确保主窗口能被重新启用
             def on_window_close():
                 preview_window.destroy()
                 # 重新启用主窗口
                 self.root.attributes("-disabled", False)
-            
+
             preview_window.protocol("WM_DELETE_WINDOW", on_window_close)
 
             # 放大图片
@@ -369,7 +374,9 @@ class DigitRecognitionApp:
             self.update_ui_after_recognition(result)
 
         # 使用进程池提交任务
-        self.process_pool.apply_async(recognition_process, (image_path,), callback=handle_result)
+        self.process_pool.apply_async(
+            recognition_process, (image_path,), callback=handle_result
+        )
 
     def update_ui_after_recognition(self, result):
         """识别完成后更新UI"""
