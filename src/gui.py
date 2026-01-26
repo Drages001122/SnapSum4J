@@ -2,13 +2,45 @@ import multiprocessing
 import os
 import time
 import tkinter as tk
+from multiprocessing.pool import Pool
 from tkinter import filedialog, messagebox
 from tkinter.scrolledtext import ScrolledText
 
 import pyautogui
 from PIL import Image, ImageTk
 
-from src.constant import APP_TITLE, WINDOW_HEIGHT, WINDOW_WIDTH
+from src.gui_constant import (
+    APP_TITLE,
+    CAPTURE_BUTTON_PADX,
+    CAPTURE_BUTTON_TEXT,
+    DIGITS_DESC,
+    DIGITS_DESC_PADY,
+    DIGITS_PADY,
+    DIGITS_TEXT_FONT,
+    DIGITS_TEXT_HEIGHT,
+    DIGITS_TEXT_PADX,
+    DIGITS_TEXT_WIDTH,
+    HEAD,
+    HEADER_FONT,
+    MAIN_FROM_PADX,
+    MAIN_FROM_PADY,
+    SUM_LABEL_FONT,
+    SUM_LABEL_PADX,
+    SUM_LABEL_PADY,
+    SUM_LABEL_TEXT,
+    SUM_PADY,
+    SUM_RESULT_ENTRY_PADX,
+    SUM_RESULT_FONT,
+    SUM_RESULT_WIDTH,
+    TITLE_LABEL_PADY,
+    TOPMOST_PADY,
+    TOPMOST_TEXT,
+    UPLOAD_BUTTON_PADX,
+    UPLOAD_BUTTON_TEXT,
+    UPLOAD_FRAME_PADY,
+    WINDOW_HEIGHT,
+    WINDOW_WIDTH,
+)
 
 # 全局变量，用于存储OCR实例（在子进程中初始化）
 global_ocr = None
@@ -87,87 +119,94 @@ def recognition_process(image_path):
 class DigitRecognitionApp:
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title(APP_TITLE)
-        self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
-        self.root.resizable(True, True)
+        self.init_window()
+        self.init_attributes()
+        self.init_layout()
 
-        # 创建进程池（在类初始化时创建，只创建一次）
-        self.process_pool = multiprocessing.Pool(processes=1, initializer=init_worker)
-
-        # 创建主框架
-        main_frame = tk.Frame(root, padx=20, pady=20)
-        main_frame.pack(fill=tk.BOTH, expand=True)
-
-        # 标题
-        title_label = tk.Label(
-            main_frame, text="数字识别与求和工具", font=("微软雅黑", 16, "bold")
+        self.process_pool: Pool = multiprocessing.Pool(
+            processes=1, initializer=init_worker
         )
-        title_label.pack(pady=10)
-
-        # 图片上传区域
-        upload_frame = tk.Frame(main_frame)
-        upload_frame.pack(fill=tk.X, pady=10)
-
-        self.image_path_var = tk.StringVar()
-
-        upload_button = tk.Button(
-            upload_frame, text="选择图片", command=self.upload_image
-        )
-        upload_button.pack(side=tk.LEFT, padx=5)
-
-        # 添加屏幕截取按钮
-        capture_button = tk.Button(
-            upload_frame, text="截取屏幕区域", command=self.capture_screen_region
-        )
-        capture_button.pack(side=tk.LEFT, padx=5)
-
-        # 数字显示区域
-        text_frame = tk.Frame(main_frame)
-        text_frame.pack(fill=tk.BOTH, expand=True, pady=10)
-
-        text_label = tk.Label(text_frame, text="识别到的数字（每行一个，可手动添加）:")
-        text_label.pack(anchor=tk.W, pady=5)
-
-        self.digits_text = ScrolledText(
-            text_frame, height=10, width=60, font=("Courier New", 12)
-        )
-        self.digits_text.pack(fill=tk.BOTH, expand=True, padx=5)
-        # 绑定文本修改事件，实现自动更新总和
-        self.digits_text.bind("<KeyRelease>", self.on_digits_modified)
-
-        # 求和区域
-        sum_frame = tk.Frame(main_frame)
-        sum_frame.pack(fill=tk.X, pady=10)
-
-        sum_label = tk.Label(sum_frame, text="总和:", font=("微软雅黑", 10, "bold"))
-        sum_label.pack(side=tk.LEFT, padx=5, pady=5)
-
-        self.sum_result_var = tk.StringVar()
-        self.sum_result_entry = tk.Entry(
-            sum_frame,
-            textvariable=self.sum_result_var,
-            width=20,
-            font=("Courier New", 12),
-            state="readonly",
-        )
-        self.sum_result_entry.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
-
-        # 置顶按钮
-        self.topmost_var = tk.BooleanVar(value=False)
-        self.topmost_button = tk.Checkbutton(
-            main_frame,
-            text="窗口置顶",
-            variable=self.topmost_var,
-            command=self.toggle_topmost,
-        )
-        self.topmost_button.pack(anchor=tk.W, pady=5)
 
         # 状态标签
         self.status_var = tk.StringVar()
         self.status_label = tk.Label(
-            main_frame, textvariable=self.status_var, fg="blue", font=("微软雅黑", 9)
+            self.main_frame, textvariable=self.status_var, fg="blue", font=("微软雅黑", 9)
         )
         self.status_label.pack(anchor=tk.W, pady=5)
+
+    def init_window(self):
+        self.root.title(APP_TITLE)
+        self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
+        self.root.resizable(True, True)
+
+    def init_attributes(self):
+        self.image_path_var = tk.StringVar()
+        self.sum_result_var = tk.StringVar()
+        self.topmost_var = tk.BooleanVar(value=False)
+
+    def init_layout(self):
+        self.main_frame = tk.Frame(self.root, padx=MAIN_FROM_PADX, pady=MAIN_FROM_PADY)
+        self.main_frame.pack(fill=tk.BOTH, expand=True)
+        self.init_title()
+        self.init_upload()
+        self.init_digits()
+        self.init_sum()
+        self.init_topmost()
+
+    def init_title(self):
+        title_label = tk.Label(self.main_frame, text=HEAD, font=HEADER_FONT)
+        title_label.pack(pady=TITLE_LABEL_PADY)
+
+    def init_upload(self):
+        upload_frame = tk.Frame(self.main_frame)
+        upload_frame.pack(fill=tk.X, pady=UPLOAD_FRAME_PADY)
+        upload_button = tk.Button(
+            upload_frame, text=UPLOAD_BUTTON_TEXT, command=self.upload_image
+        )
+        upload_button.pack(side=tk.LEFT, padx=UPLOAD_BUTTON_PADX)
+        capture_button = tk.Button(
+            upload_frame, text=CAPTURE_BUTTON_TEXT, command=self.capture_screen_region
+        )
+        capture_button.pack(side=tk.LEFT, padx=CAPTURE_BUTTON_PADX)
+
+    def init_digits(self):
+        digit_frame = tk.Frame(self.main_frame)
+        digit_frame.pack(fill=tk.BOTH, expand=True, pady=DIGITS_PADY)
+        desc_label = tk.Label(digit_frame, text=DIGITS_DESC)
+        desc_label.pack(anchor=tk.W, pady=DIGITS_DESC_PADY)
+        self.digits_text = ScrolledText(
+            digit_frame,
+            height=DIGITS_TEXT_HEIGHT,
+            width=DIGITS_TEXT_WIDTH,
+            font=DIGITS_TEXT_FONT,
+        )
+        self.digits_text.pack(fill=tk.BOTH, expand=True, padx=DIGITS_TEXT_PADX)
+        self.digits_text.bind("<KeyRelease>", self.on_digits_modified)
+
+    def init_sum(self):
+        sum_frame = tk.Frame(self.main_frame)
+        sum_frame.pack(fill=tk.X, pady=SUM_PADY)
+        sum_label = tk.Label(sum_frame, text=SUM_LABEL_TEXT, font=SUM_LABEL_FONT)
+        sum_label.pack(side=tk.LEFT, padx=SUM_LABEL_PADX, pady=SUM_LABEL_PADY)
+        sum_result_entry = tk.Entry(
+            sum_frame,
+            textvariable=self.sum_result_var,
+            width=SUM_RESULT_WIDTH,
+            font=SUM_RESULT_FONT,
+            state="readonly",
+        )
+        sum_result_entry.pack(
+            side=tk.LEFT, padx=SUM_RESULT_ENTRY_PADX, fill=tk.X, expand=True
+        )
+
+    def init_topmost(self):
+        topmost_button = tk.Checkbutton(
+            self.main_frame,
+            text=TOPMOST_TEXT,
+            variable=self.topmost_var,
+            command=self.toggle_topmost,
+        )
+        topmost_button.pack(anchor=tk.W, pady=TOPMOST_PADY)
 
     def upload_image(self):
         """上传图片"""
@@ -445,7 +484,7 @@ class DigitRecognitionApp:
             self.status_label.config(fg="red")
             self.status_var.set(f"计算失败: {str(e)}")
 
-    def on_digits_modified(self, event):
+    def on_digits_modified(self, event: tk.Event):
         """当用户修改数字时自动更新总和"""
         # 调用 calculate_sum 方法更新总和
         self.calculate_sum()
