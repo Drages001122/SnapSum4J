@@ -37,3 +37,6 @@ SUM_RESULT_ENTRY_PADX: int = 5
 
 TOPMOST_TEXT: str = "窗口置顶"
 TOPMOST_PADY: int = 5
+
+STATUS_LABEL_FONT: tuple[str, int] = ("微软雅黑", 9)
+STATUS_LABEL_PADY: int = 5

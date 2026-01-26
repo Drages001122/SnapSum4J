@@ -24,6 +24,8 @@ from src.gui_constant import (
     HEADER_FONT,
     MAIN_FROM_PADX,
     MAIN_FROM_PADY,
+    STATUS_LABEL_FONT,
+    STATUS_LABEL_PADY,
     SUM_LABEL_FONT,
     SUM_LABEL_PADX,
     SUM_LABEL_PADY,
@@ -127,13 +129,6 @@ class DigitRecognitionApp:
             processes=1, initializer=init_worker
         )
 
-        # 状态标签
-        self.status_var = tk.StringVar()
-        self.status_label = tk.Label(
-            self.main_frame, textvariable=self.status_var, fg="blue", font=("微软雅黑", 9)
-        )
-        self.status_label.pack(anchor=tk.W, pady=5)
-
     def init_window(self):
         self.root.title(APP_TITLE)
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
@@ -143,6 +138,7 @@ class DigitRecognitionApp:
         self.image_path_var = tk.StringVar()
         self.sum_result_var = tk.StringVar()
         self.topmost_var = tk.BooleanVar(value=False)
+        self.status_var = tk.StringVar()
 
     def init_layout(self):
         self.main_frame = tk.Frame(self.root, padx=MAIN_FROM_PADX, pady=MAIN_FROM_PADY)
@@ -152,6 +148,7 @@ class DigitRecognitionApp:
         self.init_digits()
         self.init_sum()
         self.init_topmost()
+        self.init_status()
 
     def init_title(self):
         title_label = tk.Label(self.main_frame, text=HEAD, font=HEADER_FONT)
@@ -207,6 +204,15 @@ class DigitRecognitionApp:
             command=self.toggle_topmost,
         )
         topmost_button.pack(anchor=tk.W, pady=TOPMOST_PADY)
+
+    def init_status(self):
+        self.status_label = tk.Label(
+            self.main_frame,
+            textvariable=self.status_var,
+            fg="blue",
+            font=STATUS_LABEL_FONT,
+        )
+        self.status_label.pack(anchor=tk.W, pady=STATUS_LABEL_PADY)
 
     def upload_image(self):
         """上传图片"""
