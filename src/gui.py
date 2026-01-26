@@ -13,6 +13,7 @@ from src.gui_constant import (
     APP_TITLE,
     CAPTURE_BUTTON_PADX,
     CAPTURE_BUTTON_TEXT,
+    CHOSEN_IMAGE_DESC,
     DIGITS_DESC,
     DIGITS_DESC_PADY,
     DIGITS_PADY,
@@ -215,7 +216,6 @@ class DigitRecognitionApp:
         self.status_label.pack(anchor=tk.W, pady=STATUS_LABEL_PADY)
 
     def upload_image(self):
-        """上传图片"""
         file_path = filedialog.askopenfilename(
             filetypes=[
                 ("图片文件", "*.png *.jpg *.jpeg *.bmp *.gif"),
@@ -224,13 +224,10 @@ class DigitRecognitionApp:
         )
         if file_path:
             self.image_path_var.set(file_path)
-            self.status_var.set(f"已选择图片: {os.path.basename(file_path)}")
-            # 显示图片预览并允许用户选择区域
+            self.status_var.set(f"{CHOSEN_IMAGE_DESC} {os.path.basename(file_path)}")
             self.preview_and_select_region(file_path)
 
-    def preview_and_select_region(self, image_path):
-        """显示图片预览并允许用户选择区域"""
-        # 加载图片
+    def preview_and_select_region(self, image_path: str):
         try:
             image = Image.open(image_path)
             img_width, img_height = image.size

@@ -40,3 +40,5 @@ TOPMOST_PADY: int = 5
 
 STATUS_LABEL_FONT: tuple[str, int] = ("微软雅黑", 9)
 STATUS_LABEL_PADY: int = 5
+
+CHOSEN_IMAGE_DESC: str = "已选择图片:"
