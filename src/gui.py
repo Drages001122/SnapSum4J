@@ -1,3 +1,4 @@
+from ast import Dict
 import multiprocessing
 import os
 import time
@@ -68,7 +69,9 @@ def init_worker():
     if global_ocr is None:
         from paddleocr import PaddleOCR
 
-        from .utils import get_resource_path  # pyright: ignore[reportUnknownVariableType]
+        from .utils import (
+            get_resource_path,  # pyright: ignore[reportUnknownVariableType]
+        )
 
         global_ocr = PaddleOCR(
             use_doc_orientation_classify=False,
@@ -81,53 +84,48 @@ def init_worker():
 
 def recognition_process(image_path: str) -> dict[str, bool | float | int | list[Any]]:
     try:
-        # 记录开始时间
         start_time = time.time()
 
-        # 使用全局OCR实例
         global global_ocr
         if global_ocr is None:
             init_worker()
+        assert global_ocr is not None
+        result: list[Any] = (  # pyright: ignore[reportUnknownVariableType]
+            global_ocr.predict(  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+                input=image_path
+            )
+        )
 
-        # 识别图片
-        result = global_ocr.predict(input=image_path)
-        # 提取数字
-        all_numbers = []
+        all_numbers: list[str] = []
         if result:
-            rec_texts = []
-            # 遍历result中的每个OCRResult对象
+            rec_texts: list[str] = []
             for res in result:
                 try:
-                    # 检查res对象是否有rec_texts属性
                     if hasattr(res, "rec_texts"):
-                        rec_texts.extend(res.rec_texts)
-                    # 或者检查是否可以通过字典方式访问
+                        rec_texts.extend(
+                            res.rec_texts
+                        )  # pyright: ignore[reportUnknownMemberType]
                     elif isinstance(res, dict) and "rec_texts" in res:
-                        rec_texts.extend(res["rec_texts"])
+                        rec_texts.extend(
+                            res[
+                                "rec_texts"
+                            ]  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+                        )
                 except Exception as e:
                     print(f"Error accessing rec_texts: {e}")
-
-            # 过滤出数字（支持小数）
             for text in rec_texts:
                 if text.replace(".", "", 1).isdigit():
                     all_numbers.append(text)
-        # 计算总和
         total_sum = sum(float(num) for num in all_numbers)
-
-        # 计算识别耗时
         elapsed_time = time.time() - start_time
-
-        # 构造识别结果
-        result = {
+        return {
             "success": True,
             "numbers": all_numbers,
             "total": total_sum,
             "elapsed_time": elapsed_time,
         }
     except Exception as e:
-        result = {"success": False, "error": str(e)}
-
-    return result
+        return {"success": False, "error": str(e)}  # pyright: ignore[reportReturnType]
 
 
 class DigitRecognitionApp:
