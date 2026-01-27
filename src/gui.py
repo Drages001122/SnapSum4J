@@ -3,7 +3,7 @@ import os
 import time
 import tkinter as tk
 from multiprocessing.pool import Pool
-from tkinter import filedialog, messagebox
+from tkinter import messagebox
 from tkinter.scrolledtext import ScrolledText
 
 from PIL import Image
@@ -13,7 +13,6 @@ from src.gui_constant import (
     APP_TITLE,
     CAPTURE_BUTTON_PADX,
     CAPTURE_BUTTON_TEXT,
-    CHOSEN_IMAGE_DESC,
     DIGITS_DESC,
     DIGITS_DESC_PADY,
     DIGITS_PADY,
@@ -45,6 +44,7 @@ from src.gui_constant import (
 )
 from src.preview_window import PreviewWindow
 from src.topmost import TopmostButton
+from src.upload import UploadFrame
 from src.utils import calculate_scaled_size
 
 # 全局变量，用于存储OCR实例（在子进程中初始化）
@@ -159,16 +159,14 @@ class DigitRecognitionApp:
         title_label.pack(pady=TITLE_LABEL_PADY)
 
     def init_upload(self):
-        upload_frame = tk.Frame(self.main_frame)
-        upload_frame.pack(fill=tk.X, pady=UPLOAD_FRAME_PADY)
-        upload_button = tk.Button(
-            upload_frame, text=UPLOAD_BUTTON_TEXT, command=self.upload_image
+        upload_frame = UploadFrame(
+            self.main_frame,
+            self.image_path_var,
+            self.status_var,
+            self.preview_and_select_region,
+            self.capture_screen_region,
         )
-        upload_button.pack(side=tk.LEFT, padx=UPLOAD_BUTTON_PADX)
-        capture_button = tk.Button(
-            upload_frame, text=CAPTURE_BUTTON_TEXT, command=self.capture_screen_region
-        )
-        capture_button.pack(side=tk.LEFT, padx=CAPTURE_BUTTON_PADX)
+        upload_frame.create_button()
 
     def init_digits(self):
         digit_frame = tk.Frame(self.main_frame)
@@ -217,18 +215,6 @@ class DigitRecognitionApp:
             font=STATUS_LABEL_FONT,
         )
         self.status_label.pack(anchor=tk.W, pady=STATUS_LABEL_PADY)
-
-    def upload_image(self):
-        file_path = filedialog.askopenfilename(
-            filetypes=[
-                ("图片文件", "*.png *.jpg *.jpeg *.bmp *.gif"),
-                ("所有文件", "*.*"),
-            ]
-        )
-        if file_path:
-            self.image_path_var.set(file_path)
-            self.status_var.set(f"{CHOSEN_IMAGE_DESC} {os.path.basename(file_path)}")
-            self.preview_and_select_region(file_path)
 
     def preview_and_select_region(self, image_path: str):
         image = Image.open(image_path)
