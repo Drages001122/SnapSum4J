@@ -1,4 +1,3 @@
-from ast import Dict
 import multiprocessing
 import os
 import time
@@ -12,48 +11,24 @@ from PIL import Image
 
 from src.capture_window import CaptureScreen
 from src.constant import DET_MODEL_PATH, REC_MODEL_PATH, TEMP_FILE_NAME
-from src.gui_constant import (
-    APP_TITLE,
-    DELETE_TEMP_FILE_FAIL,
-    DIGITS_DESC,
-    DIGITS_DESC_PADY,
-    DIGITS_PADY,
-    DIGITS_TEXT_FONT,
-    DIGITS_TEXT_HEIGHT,
-    DIGITS_TEXT_PADX,
-    DIGITS_TEXT_WIDTH,
-    ERROR_IMAGE_NOT_FOUND,
-    ERROR_NO_IMAGE_SELECTED,
-    ERROR_TITLE,
-    FAIL_RESULT_LABEL_COLOR,
-    FAIL_RESULT_LABEL_TEXT,
-    HEAD,
-    HEADER_FONT,
-    MAIN_FROM_PADX,
-    MAIN_FROM_PADY,
-    STATUS_LABEL_FONT,
-    STATUS_LABEL_PADY,
-    STATUS_RECOGNIZING_COLOR,
-    STATUS_RECOGNIZING_TEXT,
-    SUCCESS_RESULT_LABEL_COLOR,
-    SUCCESS_RESULT_LABEL_TEXT,
-    SUM_LABEL_FONT,
-    SUM_LABEL_PADX,
-    SUM_LABEL_PADY,
-    SUM_LABEL_TEXT,
-    SUM_PADY,
-    SUM_RESULT_ENTRY_PADX,
-    SUM_RESULT_FONT,
-    SUM_RESULT_WIDTH,
-    SUM_STATUS_FAIL_COLOR,
-    SUM_STATUS_FAIL_TEXT,
-    SUM_STATUS_SUCCESS_COLOR,
-    SUM_STATUS_SUCCESS_TEXT,
-    TITLE_LABEL_PADY,
-    TOPMOST_PADY,
-    WINDOW_HEIGHT,
-    WINDOW_WIDTH,
-)
+from src.gui_constant import (APP_TITLE, DELETE_TEMP_FILE_FAIL, DIGITS_DESC,
+                              DIGITS_DESC_PADY, DIGITS_PADY, DIGITS_TEXT_FONT,
+                              DIGITS_TEXT_HEIGHT, DIGITS_TEXT_PADX,
+                              DIGITS_TEXT_WIDTH, ERROR_IMAGE_NOT_FOUND,
+                              ERROR_NO_IMAGE_SELECTED, ERROR_TITLE,
+                              FAIL_RESULT_LABEL_COLOR, FAIL_RESULT_LABEL_TEXT,
+                              HEAD, HEADER_FONT, MAIN_FROM_PADX,
+                              MAIN_FROM_PADY, STATUS_LABEL_FONT,
+                              STATUS_LABEL_PADY, STATUS_RECOGNIZING_COLOR,
+                              STATUS_RECOGNIZING_TEXT,
+                              SUCCESS_RESULT_LABEL_COLOR,
+                              SUCCESS_RESULT_LABEL_TEXT, SUM_LABEL_FONT,
+                              SUM_LABEL_PADX, SUM_LABEL_PADY, SUM_LABEL_TEXT,
+                              SUM_PADY, SUM_RESULT_ENTRY_PADX, SUM_RESULT_FONT,
+                              SUM_RESULT_WIDTH, SUM_STATUS_FAIL_COLOR,
+                              SUM_STATUS_FAIL_TEXT, SUM_STATUS_SUCCESS_COLOR,
+                              SUM_STATUS_SUCCESS_TEXT, TITLE_LABEL_PADY,
+                              TOPMOST_PADY, WINDOW_HEIGHT, WINDOW_WIDTH)
 from src.preview_window import PreviewWindow
 from src.topmost import TopmostButton
 from src.upload import UploadFrame
@@ -69,9 +44,8 @@ def init_worker():
     if global_ocr is None:
         from paddleocr import PaddleOCR
 
-        from .utils import (
-            get_resource_path,  # pyright: ignore[reportUnknownVariableType]
-        )
+        from .utils import \
+            get_resource_path  # pyright: ignore[reportUnknownVariableType]
 
         global_ocr = PaddleOCR(
             use_doc_orientation_classify=False,
