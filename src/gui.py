@@ -1,6 +1,3 @@
-from typing import Any
-
-
 import multiprocessing
 import os
 import time
@@ -8,11 +5,12 @@ import tkinter as tk
 from multiprocessing.pool import Pool
 from tkinter import messagebox
 from tkinter.scrolledtext import ScrolledText
+from typing import Any
 
 from PIL import Image
 
 from src.capture_window import CaptureScreen
-from src.constant import TEMP_FILE_NAME
+from src.constant import DET_MODEL_PATH, REC_MODEL_PATH, TEMP_FILE_NAME
 from src.gui_constant import (
     APP_TITLE,
     DELETE_TEMP_FILE_FAIL,
@@ -70,19 +68,17 @@ def init_worker():
     if global_ocr is None:
         from paddleocr import PaddleOCR
 
-        from .utils import get_resource_path
+        from .utils import get_resource_path  # pyright: ignore[reportUnknownVariableType]
 
-        # 初始化 PaddleOCR 实例
         global_ocr = PaddleOCR(
             use_doc_orientation_classify=False,
             use_doc_unwarping=False,
             use_textline_orientation=False,
-            text_detection_model_dir=get_resource_path("models/PP-OCRv5_server_det"),
-            text_recognition_model_dir=get_resource_path("models/PP-OCRv5_server_rec"),
+            text_detection_model_dir=get_resource_path(DET_MODEL_PATH),
+            text_recognition_model_dir=get_resource_path(REC_MODEL_PATH),
         )
 
 
-# 定义识别函数，用于在子进程中执行
 def recognition_process(image_path: str) -> dict[str, bool | float | int | list[Any]]:
     try:
         # 记录开始时间
@@ -311,8 +307,6 @@ class DigitRecognitionApp:
             self.status_var.set(f"{SUM_STATUS_FAIL_TEXT} {str(e)}")
 
     def on_digits_modified(self, event: tk.Event):
-        """当用户修改数字时自动更新总和"""
-        # 调用 calculate_sum 方法更新总和
         self.calculate_sum()
 
     def capture_screen_region(self):
