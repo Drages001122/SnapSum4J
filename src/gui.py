@@ -9,10 +9,10 @@ from tkinter.scrolledtext import ScrolledText
 from PIL import Image
 
 from src.capture_window import CaptureScreen
+from src.constant import TEMP_FILE_NAME
 from src.gui_constant import (
     APP_TITLE,
-    CAPTURE_BUTTON_PADX,
-    CAPTURE_BUTTON_TEXT,
+    DELETE_TEMP_FILE_FAIL,
     DIGITS_DESC,
     DIGITS_DESC_PADY,
     DIGITS_PADY,
@@ -20,12 +20,16 @@ from src.gui_constant import (
     DIGITS_TEXT_HEIGHT,
     DIGITS_TEXT_PADX,
     DIGITS_TEXT_WIDTH,
+    FAIL_RESULT_LABEL_COLOR,
+    FAIL_RESULT_LABEL_TEXT,
     HEAD,
     HEADER_FONT,
     MAIN_FROM_PADX,
     MAIN_FROM_PADY,
     STATUS_LABEL_FONT,
     STATUS_LABEL_PADY,
+    SUCCESS_RESULT_LABEL_COLOR,
+    SUCCESS_RESULT_LABEL_TEXT,
     SUM_LABEL_FONT,
     SUM_LABEL_PADX,
     SUM_LABEL_PADY,
@@ -34,11 +38,12 @@ from src.gui_constant import (
     SUM_RESULT_ENTRY_PADX,
     SUM_RESULT_FONT,
     SUM_RESULT_WIDTH,
+    SUM_STATUS_FAIL_COLOR,
+    SUM_STATUS_FAIL_TEXT,
+    SUM_STATUS_SUCCESS_COLOR,
+    SUM_STATUS_SUCCESS_TEXT,
     TITLE_LABEL_PADY,
     TOPMOST_PADY,
-    UPLOAD_BUTTON_PADX,
-    UPLOAD_BUTTON_TEXT,
-    UPLOAD_FRAME_PADY,
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
@@ -251,72 +256,58 @@ class DigitRecognitionApp:
             recognition_process, (image_path,), callback=handle_result
         )
 
-    def update_ui_after_recognition(self, result):
-        """识别完成后更新UI"""
+    def update_ui_after_recognition(
+        self, result: dict[str, bool | float | int | list[str]]
+    ):
         if result["success"]:
-            # 清空文本框和上一次的求和结果
             self.digits_text.delete(1.0, tk.END)
             self.sum_result_var.set("")
+            assert isinstance(result["numbers"], list)
             for number in result["numbers"]:
                 self.digits_text.insert(tk.END, f"{number}\n")
-
-            # 自动计算并显示总和
             self.sum_result_var.set(str(result["total"]))
-
-            # 识别结束后用蓝字显示求和结果以及识别耗时
-            self.status_label.config(fg="blue")
-            # 显示识别耗时和总和，移除弹窗和数字数量
+            self.status_label.config(fg=SUCCESS_RESULT_LABEL_COLOR)
             self.status_var.set(
-                f"识别完成，耗时: {result['elapsed_time']:.2f} 秒，总和: {result['total']}"
+                SUCCESS_RESULT_LABEL_TEXT.format(
+                    elapsed_time=result["elapsed_time"], total=result["total"]
+                )
             )
         else:
-            # 识别失败时用红字显示错误信息
-            self.status_label.config(fg="red")
-            self.status_var.set(f"识别失败: {result['error']}")
+            self.status_label.config(fg=FAIL_RESULT_LABEL_COLOR)
+            assert isinstance(result["error"], str)
+            self.status_var.set(FAIL_RESULT_LABEL_TEXT + result["error"])
+        self.delete_temp_file()
 
-        # 识别完成后删除临时文件
+    def delete_temp_file(self):
         temp_file = self.image_path_var.get()
-        if temp_file and (
-            "selected_region_temp.png" in temp_file
-            or "captured_screen_region.png" in temp_file
-        ):
+        if temp_file and TEMP_FILE_NAME in temp_file:
             try:
                 if os.path.exists(temp_file):
                     os.remove(temp_file)
             except Exception as e:
-                print(f"删除临时文件失败: {str(e)}")
+                self.status_var.set(DELETE_TEMP_FILE_FAIL + str(e))
 
     def calculate_sum(self):
-        """计算文本框中所有数字的总和"""
         try:
-            # 获取文本框内容
             text_content = self.digits_text.get(1.0, tk.END)
             lines = text_content.strip().split("\n")
-
-            # 提取所有数字（支持小数）
-            numbers = []
+            numbers: list[float] = []
             for line in lines:
                 line = line.strip()
                 if line:
-                    # 尝试将每行转换为数字
                     try:
                         number = float(line)
                         numbers.append(number)
                     except ValueError:
                         # 跳过非数字行
                         pass
-
-            # 计算总和
             total_sum = sum(numbers)
             self.sum_result_var.set(str(total_sum))
-
-            # 计算完成后用蓝字显示结果
-            self.status_label.config(fg="blue")
-            self.status_var.set("计算完成")
+            self.status_label.config(fg=SUM_STATUS_SUCCESS_COLOR)
+            self.status_var.set(SUM_STATUS_SUCCESS_TEXT)
         except Exception as e:
-            # 计算失败时用红字显示错误信息
-            self.status_label.config(fg="red")
-            self.status_var.set(f"计算失败: {str(e)}")
+            self.status_label.config(fg=SUM_STATUS_FAIL_COLOR)
+            self.status_var.set(f"{SUM_STATUS_FAIL_TEXT} {str(e)}")
 
     def on_digits_modified(self, event: tk.Event):
         """当用户修改数字时自动更新总和"""

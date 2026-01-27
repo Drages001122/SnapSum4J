@@ -68,3 +68,15 @@ TOPMOST_DISABLE_MESSAGE: str = "窗口已取消置顶"
 SCREEN_CAPTURE_WARNING_TITLE: str = "提示"
 SCREEN_CAPTURE_WARNING_MESSAGE: str = "请选择一个更大的区域"
 SCREEN_CAPTURE_CANCEL_DELAY: int = 100
+
+SUCCESS_RESULT_LABEL_COLOR: str = "blue"
+SUCCESS_RESULT_LABEL_TEXT: str = "识别完成，耗时: {elapsed_time:.2f} 秒，总和: {total}"
+FAIL_RESULT_LABEL_COLOR: str = "red"
+FAIL_RESULT_LABEL_TEXT: str = "识别失败: "
+
+DELETE_TEMP_FILE_FAIL: str = "删除临时文件失败: "
+
+SUM_STATUS_SUCCESS_COLOR: str = "blue"
+SUM_STATUS_SUCCESS_TEXT: str = "计算完成"
+SUM_STATUS_FAIL_COLOR: str = "red"
+SUM_STATUS_FAIL_TEXT: str = "计算失败: "
