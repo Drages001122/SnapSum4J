@@ -22,6 +22,6 @@ def get_resource_path(relative_path):
 
 def calculate_scaled_size(image: ImageFile):
     img_width, img_height = image.size
-    scaled_width = img_width * SCALE_FACTOR
-    scaled_height = img_height * SCALE_FACTOR
+    scaled_width = int(img_width * SCALE_FACTOR)
+    scaled_height = int(img_height * SCALE_FACTOR)
     return scaled_width, scaled_height

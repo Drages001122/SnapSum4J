@@ -5,11 +5,12 @@ import tkinter as tk
 from multiprocessing.pool import Pool
 from tkinter import filedialog, messagebox
 from tkinter.scrolledtext import ScrolledText
-from typing import Optional
+from typing import Callable, Optional
 
 import pyautogui
 from PIL import Image, ImageTk
 
+from src.constant import SCALE_FACTOR, TEMP_FILE_NAME
 from src.gui_constant import (
     APP_TITLE,
     CAPTURE_BUTTON_PADX,
@@ -26,6 +27,22 @@ from src.gui_constant import (
     HEADER_FONT,
     MAIN_FROM_PADX,
     MAIN_FROM_PADY,
+    PREVIEW_BUTTON_FRAME_PADY,
+    PREVIEW_CONFIRM_BUTTON_FONT,
+    PREVIEW_CONFIRM_BUTTON_PADY,
+    PREVIEW_CONFIRM_BUTTON_TEXT,
+    PREVIEW_CONFIRM_BUTTON_WIDTH,
+    PREVIEW_CONFIRM_WARNING_MESSAGE,
+    PREVIEW_CONFIRM_WARNING_TITLE,
+    PREVIEW_ERROR_MESSAGE,
+    PREVIEW_ERROR_TITLE,
+    PREVIEW_HINT_PADY,
+    PREVIEW_HINT_TEXT,
+    PREVIEW_OUTLINE_COLOR,
+    PREVIEW_OUTLINE_WIDTH,
+    PREVIEW_RECT_MIN_LENGTH,
+    PREVIEW_WARNING_MESSAGE,
+    PREVIEW_WARNING_TITLE,
     PREVIEW_WINDOW_RELAX_HEIGHT,
     PREVIEW_WINDOW_TITLE,
     STATUS_LABEL_FONT,
@@ -265,6 +282,114 @@ class DigitRecognitionApp:
         canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)  # type: ignore[reportUnknownMemberType]
         return canvas
 
+    def handle_select_region_events(self, canvas: tk.Canvas, preview_window: tk.Toplevel, image: Image.Image):
+        start_x = None
+        start_y = None
+        rect = None
+        selected_region = None
+
+        def on_mouse_down(event: tk.Event):
+            nonlocal start_x, start_y, rect
+            start_x = int(canvas.canvasx(event.x))  # type: ignore[reportUnknownMemberType]
+            start_y = int(canvas.canvasy(event.y))  # type: ignore[reportUnknownMemberType]
+            if rect:
+                canvas.delete(rect)
+            rect = canvas.create_rectangle(
+                start_x,
+                start_y,
+                start_x,
+                start_y,
+                outline=PREVIEW_OUTLINE_COLOR,
+                width=PREVIEW_OUTLINE_WIDTH,
+            )
+
+        def on_mouse_move(event: tk.Event):
+            nonlocal start_x, start_y, rect
+            if start_x is not None and start_y is not None:
+                current_x = int(canvas.canvasx(event.x))  # type: ignore[reportUnknownMemberType]
+                current_y = int(canvas.canvasy(event.y))  # type: ignore[reportUnknownMemberType]
+                assert (
+                    rect is not None
+                ), "rect must be initialized before calling on_mouse_move"
+                canvas.coords(rect, start_x, start_y, current_x, current_y)
+
+        def on_mouse_up(event: tk.Event):
+            nonlocal selected_region, start_x, start_y
+            if start_x is not None and start_y is not None:
+                end_x = int(canvas.canvasx(event.x))  # type: ignore[reportUnknownMemberType]
+                end_y = int(canvas.canvasy(event.y))  # type: ignore[reportUnknownMemberType]
+                assert (
+                    rect is not None
+                ), "rect must be initialized before calling on_mouse_up"
+                canvas.coords(rect, start_x, start_y, end_x, end_y)
+
+                x1 = min(start_x, end_x)
+                y1 = min(start_y, end_y)
+                x2 = max(start_x, end_x)
+                y2 = max(start_y, end_y)
+
+                if (
+                    x2 - x1 > PREVIEW_RECT_MIN_LENGTH
+                    and y2 - y1 > PREVIEW_RECT_MIN_LENGTH
+                ):
+                    selected_region = (x1, y1, x2, y2)
+                else:
+                    selected_region = None
+                    messagebox.showinfo(
+                        PREVIEW_WARNING_TITLE,
+                        PREVIEW_WARNING_MESSAGE,
+                    )
+
+                start_x = None
+                start_y = None
+
+        def on_confirm():
+            nonlocal selected_region
+            if selected_region:
+                original_x1 = int(selected_region[0] / SCALE_FACTOR)
+                original_y1 = int(selected_region[1] / SCALE_FACTOR)
+                original_x2 = int(selected_region[2] / SCALE_FACTOR)
+                original_y2 = int(selected_region[3] / SCALE_FACTOR)
+                cropped_image = image.crop(
+                    (original_x1, original_y1, original_x2, original_y2)
+                )
+                temp_file = os.path.join(os.path.abspath("."), TEMP_FILE_NAME)
+                cropped_image.save(temp_file)
+                self.image_path_var.set(temp_file)
+                preview_window.destroy()
+                self.enable_root(True)
+                self.recognize_digits()
+            else:
+                messagebox.showinfo(
+                    PREVIEW_CONFIRM_WARNING_TITLE,
+                    PREVIEW_CONFIRM_WARNING_MESSAGE,
+                )
+
+        canvas.bind("<Button-1>", on_mouse_down)
+        canvas.bind("<B1-Motion>", on_mouse_move)
+        canvas.bind("<ButtonRelease-1>", on_mouse_up)
+        return on_confirm
+
+    def create_confirm_button(self, preview_window: tk.Toplevel, on_confirm: Callable[[], None]):
+        button_frame = tk.Frame(preview_window)
+        button_frame.pack(pady=PREVIEW_BUTTON_FRAME_PADY)
+
+        confirm_button = tk.Button(
+            button_frame,
+            text=PREVIEW_CONFIRM_BUTTON_TEXT,
+            command=on_confirm,
+            font=PREVIEW_CONFIRM_BUTTON_FONT,
+            width=PREVIEW_CONFIRM_BUTTON_WIDTH,
+        )
+        confirm_button.pack(pady=PREVIEW_CONFIRM_BUTTON_PADY)
+
+    def create_hint_label(self, preview_window: tk.Toplevel):
+        hint_label = tk.Label(
+            preview_window,
+            text=PREVIEW_HINT_TEXT,
+        )
+        hint_label.pack(pady=PREVIEW_HINT_PADY)
+
     def preview_and_select_region(self, image_path: str):
         try:
             image = Image.open(image_path)
@@ -273,132 +398,13 @@ class DigitRecognitionApp:
             self.enable_root(False)
             preview_window = self.create_preview_window(scaled_size)
             canvas = self.create_canvas(preview_window, scaled_size)
-
-            # 选择区域的变量
-            start_x = None
-            start_y = None
-            rect = None
-            selected_region = None  # 存储最终选择的区域
-
-            # 鼠标按下事件
-            def on_mouse_down(event):
-                nonlocal start_x, start_y, rect
-                start_x = canvas.canvasx(event.x)
-                start_y = canvas.canvasy(event.y)
-                # 创建矩形
-                if rect:
-                    canvas.delete(rect)
-                rect = canvas.create_rectangle(
-                    start_x,
-                    start_y,
-                    start_x,
-                    start_y,
-                    outline="red",
-                    width=2,
-                )
-
-            # 鼠标移动事件
-            def on_mouse_move(event):
-                nonlocal start_x, start_y, rect
-                if start_x is not None and start_y is not None:
-                    current_x = canvas.canvasx(event.x)
-                    current_y = canvas.canvasy(event.y)
-                    # 更新矩形
-                    canvas.coords(
-                        rect, start_x, start_y, current_x, current_y
-                    )
-
-            # 鼠标释放事件
-            def on_mouse_up(event):
-                nonlocal selected_region, start_x, start_y
-                if start_x is not None and start_y is not None:
-                    end_x = canvas.canvasx(event.x)
-                    end_y = canvas.canvasy(event.y)
-
-                    # 确保坐标顺序正确
-                    x1 = min(start_x, end_x)
-                    y1 = min(start_y, end_y)
-                    x2 = max(start_x, end_x)
-                    y2 = max(start_y, end_y)
-
-                    # 检查选择区域是否有效
-                    if x2 - x1 > 10 and y2 - y1 > 10:
-                        # 存储选中的区域
-                        selected_region = (x1, y1, x2, y2)
-                    else:
-                        selected_region = None
-                        messagebox.showinfo("提示", "请选择一个更大的区域")
-
-                    # 重置变量
-                    start_x = None
-                    start_y = None
-
-            # 确认按钮回调函数
-            def on_confirm():
-                nonlocal selected_region
-                if selected_region:
-                    # 将放大后的画布坐标转换回原始图片坐标
-                    original_x1 = int(selected_region[0] / scale_factor)
-                    original_y1 = int(selected_region[1] / scale_factor)
-                    original_x2 = int(selected_region[2] / scale_factor)
-                    original_y2 = int(selected_region[3] / scale_factor)
-
-                    # 裁剪选中区域
-                    cropped_image = Image.open(image_path).crop(
-                        (original_x1, original_y1, original_x2, original_y2)
-                    )
-
-                    # 保存为临时文件到根目录
-                    temp_file = os.path.join(
-                        os.path.abspath("."), "selected_region_temp.png"
-                    )
-                    cropped_image.save(temp_file)
-
-                    # 更新图片路径为选中的区域
-                    self.image_path_var.set(temp_file)
-
-                    # 关闭预览窗口
-                    preview_window.destroy()
-
-                    # 重新启用主窗口
-                    self.root.attributes("-disabled", False)
-
-                    # 开始识别
-                    self.recognize_digits()
-                else:
-                    messagebox.showinfo("提示", "请先选择一个区域")
-
-            # 绑定鼠标事件
-            canvas.bind("<Button-1>", on_mouse_down)
-            canvas.bind("<B1-Motion>", on_mouse_move)
-            canvas.bind("<ButtonRelease-1>", on_mouse_up)
-
-            # 创建按钮框架
-            button_frame = tk.Frame(preview_window)
-            button_frame.pack(pady=20)
-
-            # 添加确认按钮
-            confirm_button = tk.Button(
-                button_frame,
-                text="确认选择",
-                command=on_confirm,
-                font=("微软雅黑", 12),
-                width=15,
-            )
-            confirm_button.pack(pady=10)
-
-            # 添加提示标签
-            hint_label = tk.Label(
-                preview_window,
-                text="提示: 按住鼠标左键拖拽选择要识别的区域，可反复选择直到点击确认",
-            )
-            hint_label.pack(pady=10)
-
+            on_confirm = self.handle_select_region_events(canvas, preview_window, image)
+            self.create_confirm_button(preview_window, on_confirm)
+            self.create_hint_label(preview_window)
         except Exception as e:
-            messagebox.showerror("错误", f"无法加载图片: {str(e)}")
-            preview_window.destroy()
-            # 重新启用主窗口
-            self.root.attributes("-disabled", False)
+            messagebox.showerror(PREVIEW_ERROR_TITLE, f"{PREVIEW_ERROR_MESSAGE} {str(e)}")
+            preview_window.destroy()  # pyright: ignore[reportPossiblyUnboundVariable]
+            self.enable_root(True)
 
     def recognize_digits(self):
         """识别图片中的数字"""
