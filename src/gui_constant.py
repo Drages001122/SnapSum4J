@@ -62,3 +62,6 @@ PREVIEW_HINT_TEXT: str = "提示: 按住鼠标左键拖拽选择要识别的区�
 PREVIEW_HINT_PADY: int = 10
 PREVIEW_ERROR_TITLE: str = "错误"
 PREVIEW_ERROR_MESSAGE: str = "无法加载图片: "
+
+TOPMOST_ENABLE_MESSAGE: str = "窗口已置顶"
+TOPMOST_DISABLE_MESSAGE: str = "窗口已取消置顶"

@@ -5,7 +5,6 @@ import tkinter as tk
 from multiprocessing.pool import Pool
 from tkinter import filedialog, messagebox
 from tkinter.scrolledtext import ScrolledText
-from typing import Callable
 
 import pyautogui
 from PIL import Image
@@ -26,15 +25,6 @@ from src.gui_constant import (
     HEADER_FONT,
     MAIN_FROM_PADX,
     MAIN_FROM_PADY,
-    PREVIEW_BUTTON_FRAME_PADY,
-    PREVIEW_CONFIRM_BUTTON_FONT,
-    PREVIEW_CONFIRM_BUTTON_PADY,
-    PREVIEW_CONFIRM_BUTTON_TEXT,
-    PREVIEW_CONFIRM_BUTTON_WIDTH,
-    PREVIEW_ERROR_MESSAGE,
-    PREVIEW_ERROR_TITLE,
-    PREVIEW_HINT_PADY,
-    PREVIEW_HINT_TEXT,
     STATUS_LABEL_FONT,
     STATUS_LABEL_PADY,
     SUM_LABEL_FONT,
@@ -47,7 +37,6 @@ from src.gui_constant import (
     SUM_RESULT_WIDTH,
     TITLE_LABEL_PADY,
     TOPMOST_PADY,
-    TOPMOST_TEXT,
     UPLOAD_BUTTON_PADX,
     UPLOAD_BUTTON_TEXT,
     UPLOAD_FRAME_PADY,
@@ -56,6 +45,7 @@ from src.gui_constant import (
 )
 from src.preview_window import PreviewWindow
 from src.utils import calculate_scaled_size
+from src.topmost import TopmostButton
 
 # 全局变量，用于存储OCR实例（在子进程中初始化）
 global_ocr = None
@@ -211,11 +201,11 @@ class DigitRecognitionApp:
         )
 
     def init_topmost(self):
-        topmost_button = tk.Checkbutton(
+        topmost_button = TopmostButton(
+            self.root,
             self.main_frame,
-            text=TOPMOST_TEXT,
-            variable=self.topmost_var,
-            command=self.toggle_topmost,
+            self.topmost_var,
+            self.status_var,
         )
         topmost_button.pack(anchor=tk.W, pady=TOPMOST_PADY)
 
@@ -346,16 +336,6 @@ class DigitRecognitionApp:
         """当用户修改数字时自动更新总和"""
         # 调用 calculate_sum 方法更新总和
         self.calculate_sum()
-
-    def toggle_topmost(self):
-        """切换窗口置顶状态"""
-        is_topmost = self.topmost_var.get()
-        self.root.attributes("-topmost", is_topmost)
-        # 更新状态标签显示置顶状态
-        if is_topmost:
-            self.status_var.set("窗口已置顶")
-        else:
-            self.status_var.set("窗口已取消置顶")
 
     def capture_screen_region(self):
         """截取屏幕区域"""
