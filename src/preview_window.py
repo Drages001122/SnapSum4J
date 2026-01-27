@@ -5,7 +5,7 @@ from typing import Callable
 
 from PIL import Image, ImageTk
 
-from src.constant import SCALE_FACTOR, TEMP_FILE_NAME
+from src.constant import PREVIEW_RECT_MIN_LENGTH, SCALE_FACTOR, TEMP_FILE_NAME
 from src.gui_constant import (
     PREVIEW_BUTTON_FRAME_PADY,
     PREVIEW_CONFIRM_BUTTON_FONT,
@@ -20,7 +20,6 @@ from src.gui_constant import (
     PREVIEW_HINT_TEXT,
     PREVIEW_OUTLINE_COLOR,
     PREVIEW_OUTLINE_WIDTH,
-    PREVIEW_RECT_MIN_LENGTH,
     PREVIEW_WARNING_MESSAGE,
     PREVIEW_WARNING_TITLE,
     PREVIEW_WINDOW_RELAX_HEIGHT,
