@@ -80,3 +80,10 @@ SUM_STATUS_SUCCESS_COLOR: str = "blue"
 SUM_STATUS_SUCCESS_TEXT: str = "计算完成"
 SUM_STATUS_FAIL_COLOR: str = "red"
 SUM_STATUS_FAIL_TEXT: str = "计算失败: "
+
+ERROR_TITLE: str = "错误"
+ERROR_NO_IMAGE_SELECTED: str = "请先选择一张图片"
+ERROR_IMAGE_NOT_FOUND: str = "选择的图片文件不存在"
+
+STATUS_RECOGNIZING_COLOR: str = "red"
+STATUS_RECOGNIZING_TEXT: str = "正在识别数字..."

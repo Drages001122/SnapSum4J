@@ -1,3 +1,6 @@
+from typing import Any
+
+
 import multiprocessing
 import os
 import time
@@ -20,6 +23,9 @@ from src.gui_constant import (
     DIGITS_TEXT_HEIGHT,
     DIGITS_TEXT_PADX,
     DIGITS_TEXT_WIDTH,
+    ERROR_IMAGE_NOT_FOUND,
+    ERROR_NO_IMAGE_SELECTED,
+    ERROR_TITLE,
     FAIL_RESULT_LABEL_COLOR,
     FAIL_RESULT_LABEL_TEXT,
     HEAD,
@@ -28,6 +34,8 @@ from src.gui_constant import (
     MAIN_FROM_PADY,
     STATUS_LABEL_FONT,
     STATUS_LABEL_PADY,
+    STATUS_RECOGNIZING_COLOR,
+    STATUS_RECOGNIZING_TEXT,
     SUCCESS_RESULT_LABEL_COLOR,
     SUCCESS_RESULT_LABEL_TEXT,
     SUM_LABEL_FONT,
@@ -75,7 +83,7 @@ def init_worker():
 
 
 # 定义识别函数，用于在子进程中执行
-def recognition_process(image_path):
+def recognition_process(image_path: str) -> dict[str, bool | float | int | list[Any]]:
     try:
         # 记录开始时间
         start_time = time.time()
@@ -232,26 +240,19 @@ class DigitRecognitionApp:
         preview_window.add_image(image, scaled_size)
 
     def recognize_digits(self):
-        """识别图片中的数字"""
         image_path = self.image_path_var.get()
         if not image_path:
-            messagebox.showerror("错误", "请先选择一张图片")
+            messagebox.showerror(ERROR_TITLE, ERROR_NO_IMAGE_SELECTED)
             return
-
         if not os.path.exists(image_path):
-            messagebox.showerror("错误", "选择的图片文件不存在")
+            messagebox.showerror(ERROR_TITLE, ERROR_IMAGE_NOT_FOUND)
             return
+        self.status_label.config(fg=STATUS_RECOGNIZING_COLOR)
+        self.status_var.set(STATUS_RECOGNIZING_TEXT)
 
-        # 识别过程中用红字显示正在识别
-        self.status_label.config(fg="red")
-        self.status_var.set("正在识别数字...")
-
-        # 定义回调函数处理结果
-        def handle_result(result):
-            # 更新UI
+        def handle_result(result: dict[str, bool | float | int | list[str]]):
             self.update_ui_after_recognition(result)
 
-        # 使用进程池提交任务
         self.process_pool.apply_async(
             recognition_process, (image_path,), callback=handle_result
         )
