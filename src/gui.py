@@ -5,12 +5,11 @@ import tkinter as tk
 from multiprocessing.pool import Pool
 from tkinter import filedialog, messagebox
 from tkinter.scrolledtext import ScrolledText
-from typing import Callable, Optional
+from typing import Callable
 
 import pyautogui
 from PIL import Image, ImageTk
 
-from src.constant import SCALE_FACTOR, TEMP_FILE_NAME
 from src.gui_constant import (
     APP_TITLE,
     CAPTURE_BUTTON_PADX,
@@ -32,19 +31,10 @@ from src.gui_constant import (
     PREVIEW_CONFIRM_BUTTON_PADY,
     PREVIEW_CONFIRM_BUTTON_TEXT,
     PREVIEW_CONFIRM_BUTTON_WIDTH,
-    PREVIEW_CONFIRM_WARNING_MESSAGE,
-    PREVIEW_CONFIRM_WARNING_TITLE,
     PREVIEW_ERROR_MESSAGE,
     PREVIEW_ERROR_TITLE,
     PREVIEW_HINT_PADY,
     PREVIEW_HINT_TEXT,
-    PREVIEW_OUTLINE_COLOR,
-    PREVIEW_OUTLINE_WIDTH,
-    PREVIEW_RECT_MIN_LENGTH,
-    PREVIEW_WARNING_MESSAGE,
-    PREVIEW_WARNING_TITLE,
-    PREVIEW_WINDOW_RELAX_HEIGHT,
-    PREVIEW_WINDOW_TITLE,
     STATUS_LABEL_FONT,
     STATUS_LABEL_PADY,
     SUM_LABEL_FONT,
@@ -64,6 +54,7 @@ from src.gui_constant import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
+from src.preview_window import PreviewWindow
 from src.utils import calculate_scaled_size
 
 # 全局变量，用于存储OCR实例（在子进程中初始化）
@@ -161,7 +152,7 @@ class DigitRecognitionApp:
         self.sum_result_var = tk.StringVar()
         self.topmost_var = tk.BooleanVar(value=False)
         self.status_var = tk.StringVar()
-        self.photo: Optional[ImageTk.PhotoImage] = None
+        self.photo = None
 
     def init_layout(self):
         self.main_frame = tk.Frame(self.root, padx=MAIN_FROM_PADX, pady=MAIN_FROM_PADY)
@@ -249,26 +240,6 @@ class DigitRecognitionApp:
             self.status_var.set(f"{CHOSEN_IMAGE_DESC} {os.path.basename(file_path)}")
             self.preview_and_select_region(file_path)
 
-    def enable_root(self, enabled: bool):
-        self.root.attributes(  # pyright: ignore[reportUnknownMemberType]
-            "-disabled", not enabled
-        )
-
-    def create_preview_window(self, scaled_size: tuple[int, int]):
-        preview_window = tk.Toplevel(self.root)
-        preview_window.title(PREVIEW_WINDOW_TITLE)
-        preview_window.geometry(
-            f"{scaled_size[0]}x{scaled_size[1] + PREVIEW_WINDOW_RELAX_HEIGHT}"
-        )
-        preview_window.resizable(True, True)
-
-        def on_window_close():
-            preview_window.destroy()
-            self.enable_root(True)
-
-        preview_window.protocol("WM_DELETE_WINDOW", on_window_close)
-        return preview_window
-
     def create_canvas(
         self,
         preview_window: tk.Toplevel,
@@ -278,99 +249,13 @@ class DigitRecognitionApp:
         canvas.pack()
         assert (
             self.photo is not None
-        ), "self.photo must be initialized before calling create_canvas"
+        ), "photo must be initialized before calling create_canvas"
         canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)  # type: ignore[reportUnknownMemberType]
         return canvas
 
-    def handle_select_region_events(self, canvas: tk.Canvas, preview_window: tk.Toplevel, image: Image.Image):
-        start_x = None
-        start_y = None
-        rect = None
-        selected_region = None
-
-        def on_mouse_down(event: tk.Event):
-            nonlocal start_x, start_y, rect
-            start_x = int(canvas.canvasx(event.x))  # type: ignore[reportUnknownMemberType]
-            start_y = int(canvas.canvasy(event.y))  # type: ignore[reportUnknownMemberType]
-            if rect:
-                canvas.delete(rect)
-            rect = canvas.create_rectangle(
-                start_x,
-                start_y,
-                start_x,
-                start_y,
-                outline=PREVIEW_OUTLINE_COLOR,
-                width=PREVIEW_OUTLINE_WIDTH,
-            )
-
-        def on_mouse_move(event: tk.Event):
-            nonlocal start_x, start_y, rect
-            if start_x is not None and start_y is not None:
-                current_x = int(canvas.canvasx(event.x))  # type: ignore[reportUnknownMemberType]
-                current_y = int(canvas.canvasy(event.y))  # type: ignore[reportUnknownMemberType]
-                assert (
-                    rect is not None
-                ), "rect must be initialized before calling on_mouse_move"
-                canvas.coords(rect, start_x, start_y, current_x, current_y)
-
-        def on_mouse_up(event: tk.Event):
-            nonlocal selected_region, start_x, start_y
-            if start_x is not None and start_y is not None:
-                end_x = int(canvas.canvasx(event.x))  # type: ignore[reportUnknownMemberType]
-                end_y = int(canvas.canvasy(event.y))  # type: ignore[reportUnknownMemberType]
-                assert (
-                    rect is not None
-                ), "rect must be initialized before calling on_mouse_up"
-                canvas.coords(rect, start_x, start_y, end_x, end_y)
-
-                x1 = min(start_x, end_x)
-                y1 = min(start_y, end_y)
-                x2 = max(start_x, end_x)
-                y2 = max(start_y, end_y)
-
-                if (
-                    x2 - x1 > PREVIEW_RECT_MIN_LENGTH
-                    and y2 - y1 > PREVIEW_RECT_MIN_LENGTH
-                ):
-                    selected_region = (x1, y1, x2, y2)
-                else:
-                    selected_region = None
-                    messagebox.showinfo(
-                        PREVIEW_WARNING_TITLE,
-                        PREVIEW_WARNING_MESSAGE,
-                    )
-
-                start_x = None
-                start_y = None
-
-        def on_confirm():
-            nonlocal selected_region
-            if selected_region:
-                original_x1 = int(selected_region[0] / SCALE_FACTOR)
-                original_y1 = int(selected_region[1] / SCALE_FACTOR)
-                original_x2 = int(selected_region[2] / SCALE_FACTOR)
-                original_y2 = int(selected_region[3] / SCALE_FACTOR)
-                cropped_image = image.crop(
-                    (original_x1, original_y1, original_x2, original_y2)
-                )
-                temp_file = os.path.join(os.path.abspath("."), TEMP_FILE_NAME)
-                cropped_image.save(temp_file)
-                self.image_path_var.set(temp_file)
-                preview_window.destroy()
-                self.enable_root(True)
-                self.recognize_digits()
-            else:
-                messagebox.showinfo(
-                    PREVIEW_CONFIRM_WARNING_TITLE,
-                    PREVIEW_CONFIRM_WARNING_MESSAGE,
-                )
-
-        canvas.bind("<Button-1>", on_mouse_down)
-        canvas.bind("<B1-Motion>", on_mouse_move)
-        canvas.bind("<ButtonRelease-1>", on_mouse_up)
-        return on_confirm
-
-    def create_confirm_button(self, preview_window: tk.Toplevel, on_confirm: Callable[[], None]):
+    def create_confirm_button(
+        self, preview_window: tk.Toplevel, on_confirm: Callable[[], None]
+    ):
         button_frame = tk.Frame(preview_window)
         button_frame.pack(pady=PREVIEW_BUTTON_FRAME_PADY)
 
@@ -391,20 +276,26 @@ class DigitRecognitionApp:
         hint_label.pack(pady=PREVIEW_HINT_PADY)
 
     def preview_and_select_region(self, image_path: str):
+        image = Image.open(image_path)
+        scaled_size = calculate_scaled_size(image)
+        preview_window = PreviewWindow(
+            self.root,
+            self.image_path_var,
+            self.recognize_digits,
+            scaled_size,
+        )
         try:
-            image = Image.open(image_path)
-            scaled_size = calculate_scaled_size(image)
             self.photo = ImageTk.PhotoImage(image.resize(scaled_size))
-            self.enable_root(False)
-            preview_window = self.create_preview_window(scaled_size)
             canvas = self.create_canvas(preview_window, scaled_size)
-            on_confirm = self.handle_select_region_events(canvas, preview_window, image)
+            on_confirm = preview_window.handle_select_region_events(canvas, image)
             self.create_confirm_button(preview_window, on_confirm)
             self.create_hint_label(preview_window)
         except Exception as e:
-            messagebox.showerror(PREVIEW_ERROR_TITLE, f"{PREVIEW_ERROR_MESSAGE} {str(e)}")
-            preview_window.destroy()  # pyright: ignore[reportPossiblyUnboundVariable]
-            self.enable_root(True)
+            messagebox.showerror(
+                PREVIEW_ERROR_TITLE, f"{PREVIEW_ERROR_MESSAGE} {str(e)}"
+            )
+            preview_window.enable_root(True)
+            preview_window.destroy()
 
     def recognize_digits(self):
         """识别图片中的数字"""
