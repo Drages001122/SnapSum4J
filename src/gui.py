@@ -5,6 +5,7 @@ import tkinter as tk
 from multiprocessing.pool import Pool
 from tkinter import filedialog, messagebox
 from tkinter.scrolledtext import ScrolledText
+from typing import Optional
 
 import pyautogui
 from PIL import Image, ImageTk
@@ -143,6 +144,7 @@ class DigitRecognitionApp:
         self.sum_result_var = tk.StringVar()
         self.topmost_var = tk.BooleanVar(value=False)
         self.status_var = tk.StringVar()
+        self.photo: Optional[ImageTk.PhotoImage] = None
 
     def init_layout(self):
         self.main_frame = tk.Frame(self.root, padx=MAIN_FROM_PADX, pady=MAIN_FROM_PADY)
@@ -235,83 +237,89 @@ class DigitRecognitionApp:
             "-disabled", not enabled
         )
 
+    def create_preview_window(self, scaled_size: tuple[int, int]):
+        preview_window = tk.Toplevel(self.root)
+        preview_window.title(PREVIEW_WINDOW_TITLE)
+        preview_window.geometry(
+            f"{scaled_size[0]}x{scaled_size[1] + PREVIEW_WINDOW_RELAX_HEIGHT}"
+        )
+        preview_window.resizable(True, True)
+
+        def on_window_close():
+            preview_window.destroy()
+            self.enable_root(True)
+
+        preview_window.protocol("WM_DELETE_WINDOW", on_window_close)
+        return preview_window
+
+    def create_canvas(
+        self,
+        preview_window: tk.Toplevel,
+        scaled_size: tuple[int, int],
+    ):
+        canvas = tk.Canvas(preview_window, width=scaled_size[0], height=scaled_size[1])
+        canvas.pack()
+        assert (
+            self.photo is not None
+        ), "self.photo must be initialized before calling create_canvas"
+        canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)  # type: ignore[reportUnknownMemberType]
+        return canvas
+
     def preview_and_select_region(self, image_path: str):
         try:
             image = Image.open(image_path)
-            scaled_width, scaled_height = calculate_scaled_size(image)
+            scaled_size = calculate_scaled_size(image)
+            self.photo = ImageTk.PhotoImage(image.resize(scaled_size))
             self.enable_root(False)
-
-            preview_window = tk.Toplevel(self.root)
-            preview_window.title(PREVIEW_WINDOW_TITLE)
-            preview_window.geometry(
-                f"{scaled_width}x{scaled_height + PREVIEW_WINDOW_RELAX_HEIGHT}"
-            )
-            preview_window.resizable(True, True)
-
-            def on_window_close():
-                preview_window.destroy()
-                self.enable_root(True)
-
-            preview_window.protocol("WM_DELETE_WINDOW", on_window_close)
-
-            # 放大图片
-            scaled_image = image.resize((scaled_width, scaled_height))
-
-            # 转换为Tkinter可用的图片格式
-            photo = ImageTk.PhotoImage(scaled_image)
-
-            # 创建画布，大小为图片的3倍
-            canvas = tk.Canvas(preview_window, width=scaled_width, height=scaled_height)
-            canvas.pack()
-
-            # 在画布上显示图片
-            canvas.create_image(0, 0, anchor=tk.NW, image=photo)
-            canvas.image = photo  # 保持引用，防止被垃圾回收
+            preview_window = self.create_preview_window(scaled_size)
+            canvas = self.create_canvas(preview_window, scaled_size)
 
             # 选择区域的变量
-            self.start_x = None
-            self.start_y = None
-            self.rect = None
+            start_x = None
+            start_y = None
+            rect = None
             selected_region = None  # 存储最终选择的区域
 
             # 鼠标按下事件
             def on_mouse_down(event):
-                self.start_x = canvas.canvasx(event.x)
-                self.start_y = canvas.canvasy(event.y)
+                nonlocal start_x, start_y, rect
+                start_x = canvas.canvasx(event.x)
+                start_y = canvas.canvasy(event.y)
                 # 创建矩形
-                if self.rect:
-                    canvas.delete(self.rect)
-                self.rect = canvas.create_rectangle(
-                    self.start_x,
-                    self.start_y,
-                    self.start_x,
-                    self.start_y,
+                if rect:
+                    canvas.delete(rect)
+                rect = canvas.create_rectangle(
+                    start_x,
+                    start_y,
+                    start_x,
+                    start_y,
                     outline="red",
                     width=2,
                 )
 
             # 鼠标移动事件
             def on_mouse_move(event):
-                if self.start_x is not None and self.start_y is not None:
+                nonlocal start_x, start_y, rect
+                if start_x is not None and start_y is not None:
                     current_x = canvas.canvasx(event.x)
                     current_y = canvas.canvasy(event.y)
                     # 更新矩形
                     canvas.coords(
-                        self.rect, self.start_x, self.start_y, current_x, current_y
+                        rect, start_x, start_y, current_x, current_y
                     )
 
             # 鼠标释放事件
             def on_mouse_up(event):
-                nonlocal selected_region
-                if self.start_x is not None and self.start_y is not None:
+                nonlocal selected_region, start_x, start_y
+                if start_x is not None and start_y is not None:
                     end_x = canvas.canvasx(event.x)
                     end_y = canvas.canvasy(event.y)
 
                     # 确保坐标顺序正确
-                    x1 = min(self.start_x, end_x)
-                    y1 = min(self.start_y, end_y)
-                    x2 = max(self.start_x, end_x)
-                    y2 = max(self.start_y, end_y)
+                    x1 = min(start_x, end_x)
+                    y1 = min(start_y, end_y)
+                    x2 = max(start_x, end_x)
+                    y2 = max(start_y, end_y)
 
                     # 检查选择区域是否有效
                     if x2 - x1 > 10 and y2 - y1 > 10:
@@ -322,8 +330,8 @@ class DigitRecognitionApp:
                         messagebox.showinfo("提示", "请选择一个更大的区域")
 
                     # 重置变量
-                    self.start_x = None
-                    self.start_y = None
+                    start_x = None
+                    start_y = None
 
             # 确认按钮回调函数
             def on_confirm():
