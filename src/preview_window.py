@@ -3,12 +3,21 @@ import tkinter as tk
 from tkinter import messagebox
 from typing import Callable
 
-from PIL import Image
+from PIL import Image, ImageTk
 
 from src.constant import SCALE_FACTOR, TEMP_FILE_NAME
 from src.gui_constant import (
+    PREVIEW_BUTTON_FRAME_PADY,
+    PREVIEW_CONFIRM_BUTTON_FONT,
+    PREVIEW_CONFIRM_BUTTON_PADY,
+    PREVIEW_CONFIRM_BUTTON_TEXT,
+    PREVIEW_CONFIRM_BUTTON_WIDTH,
     PREVIEW_CONFIRM_WARNING_MESSAGE,
     PREVIEW_CONFIRM_WARNING_TITLE,
+    PREVIEW_ERROR_MESSAGE,
+    PREVIEW_ERROR_TITLE,
+    PREVIEW_HINT_PADY,
+    PREVIEW_HINT_TEXT,
     PREVIEW_OUTLINE_COLOR,
     PREVIEW_OUTLINE_WIDTH,
     PREVIEW_RECT_MIN_LENGTH,
@@ -25,14 +34,27 @@ class PreviewWindow(tk.Toplevel):
         root: tk.Tk,
         image_path_var: tk.StringVar,
         recognize_digits: Callable[[], None],
-        scaled_size: tuple[int, int],
     ):
         super().__init__(root)
         self.root = root
         self.image_path_var = image_path_var
         self.recognize_digits = recognize_digits
-        self.enable_root(False)
-        self.create_preview_window(scaled_size)
+
+    def add_image(self, image: Image.Image, scaled_size: tuple[int, int]):
+        try:
+            self.photo = ImageTk.PhotoImage(image.resize(scaled_size))
+            self.enable_root(False)
+            self.create_preview_window(scaled_size)
+            canvas = self.create_canvas(scaled_size)
+            on_confirm = self.handle_select_region_events(canvas, image)
+            self.create_confirm_button(on_confirm)
+            self.create_hint_label()
+        except Exception as e:
+            messagebox.showerror(
+                PREVIEW_ERROR_TITLE, f"{PREVIEW_ERROR_MESSAGE} {str(e)}"
+            )
+            self.enable_root(True)
+            self.destroy()
 
     def enable_root(self, enabled: bool):
         self.root.attributes(  # pyright: ignore[reportUnknownMemberType]
@@ -139,3 +161,35 @@ class PreviewWindow(tk.Toplevel):
         canvas.bind("<B1-Motion>", on_mouse_move)
         canvas.bind("<ButtonRelease-1>", on_mouse_up)
         return on_confirm
+
+    def create_canvas(
+        self,
+        scaled_size: tuple[int, int],
+    ):
+        canvas = tk.Canvas(self, width=scaled_size[0], height=scaled_size[1])
+        canvas.pack()
+        assert (
+            self.photo is not None
+        ), "photo must be initialized before calling create_canvas"
+        canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)  # type: ignore[reportUnknownMemberType]
+        return canvas
+
+    def create_confirm_button(self, on_confirm: Callable[[], None]):
+        button_frame = tk.Frame(self)
+        button_frame.pack(pady=PREVIEW_BUTTON_FRAME_PADY)
+
+        confirm_button = tk.Button(
+            button_frame,
+            text=PREVIEW_CONFIRM_BUTTON_TEXT,
+            command=on_confirm,
+            font=PREVIEW_CONFIRM_BUTTON_FONT,
+            width=PREVIEW_CONFIRM_BUTTON_WIDTH,
+        )
+        confirm_button.pack(pady=PREVIEW_CONFIRM_BUTTON_PADY)
+
+    def create_hint_label(self):
+        hint_label = tk.Label(
+            self,
+            text=PREVIEW_HINT_TEXT,
+        )
+        hint_label.pack(pady=PREVIEW_HINT_PADY)

@@ -8,7 +8,7 @@ from tkinter.scrolledtext import ScrolledText
 from typing import Callable
 
 import pyautogui
-from PIL import Image, ImageTk
+from PIL import Image
 
 from src.gui_constant import (
     APP_TITLE,
@@ -240,41 +240,6 @@ class DigitRecognitionApp:
             self.status_var.set(f"{CHOSEN_IMAGE_DESC} {os.path.basename(file_path)}")
             self.preview_and_select_region(file_path)
 
-    def create_canvas(
-        self,
-        preview_window: tk.Toplevel,
-        scaled_size: tuple[int, int],
-    ):
-        canvas = tk.Canvas(preview_window, width=scaled_size[0], height=scaled_size[1])
-        canvas.pack()
-        assert (
-            self.photo is not None
-        ), "photo must be initialized before calling create_canvas"
-        canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)  # type: ignore[reportUnknownMemberType]
-        return canvas
-
-    def create_confirm_button(
-        self, preview_window: tk.Toplevel, on_confirm: Callable[[], None]
-    ):
-        button_frame = tk.Frame(preview_window)
-        button_frame.pack(pady=PREVIEW_BUTTON_FRAME_PADY)
-
-        confirm_button = tk.Button(
-            button_frame,
-            text=PREVIEW_CONFIRM_BUTTON_TEXT,
-            command=on_confirm,
-            font=PREVIEW_CONFIRM_BUTTON_FONT,
-            width=PREVIEW_CONFIRM_BUTTON_WIDTH,
-        )
-        confirm_button.pack(pady=PREVIEW_CONFIRM_BUTTON_PADY)
-
-    def create_hint_label(self, preview_window: tk.Toplevel):
-        hint_label = tk.Label(
-            preview_window,
-            text=PREVIEW_HINT_TEXT,
-        )
-        hint_label.pack(pady=PREVIEW_HINT_PADY)
-
     def preview_and_select_region(self, image_path: str):
         image = Image.open(image_path)
         scaled_size = calculate_scaled_size(image)
@@ -282,20 +247,8 @@ class DigitRecognitionApp:
             self.root,
             self.image_path_var,
             self.recognize_digits,
-            scaled_size,
         )
-        try:
-            self.photo = ImageTk.PhotoImage(image.resize(scaled_size))
-            canvas = self.create_canvas(preview_window, scaled_size)
-            on_confirm = preview_window.handle_select_region_events(canvas, image)
-            self.create_confirm_button(preview_window, on_confirm)
-            self.create_hint_label(preview_window)
-        except Exception as e:
-            messagebox.showerror(
-                PREVIEW_ERROR_TITLE, f"{PREVIEW_ERROR_MESSAGE} {str(e)}"
-            )
-            preview_window.enable_root(True)
-            preview_window.destroy()
+        preview_window.add_image(image, scaled_size)
 
     def recognize_digits(self):
         """识别图片中的数字"""
